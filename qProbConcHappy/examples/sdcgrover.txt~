@@ -1,0 +1,33 @@
+---SDCGrover---
+hist: (100, [x1,x2,i,j])
+k: 100
+<
+ H(q1); CNOT(q1,q2);
+ skip or X(q1) or Z(q1) or (X(q1);Z(q1));
+ CNOT(q1,q2); H(q1);
+ Meas(x1,q1); Meas(x2,q2);
+ Reset(q1); Reset(q2);
+ i:=x1; j:=x2;
+ H(q1); H(q2);
+ X(q3); H(q3);
+ if (i==0 & j==0)
+ then {X(q1); X(q2); TOF(q1,q2,q3); X(q1); X(q2)}
+ else{
+  if (i==0 & j==1)
+  then {X(q1); TOF(q1,q2,q3); X(q1)}
+  else{
+   if(i==1 & j==0)
+   then {X(q2); TOF(q1,q2,q3); X(q2)}
+   else {TOF(q1,q2,q3)}
+  }
+ };
+ H(q1); X(q1); H(q2); X(q2);
+ CZ(q1,q2);
+ X(q1); H(q1); X(q2); H(q2);
+ Meas(i,q1); Meas(j,q2);
+ Reset(q3),
+ [(x1,0),(x2,0),(i,0),(j,0)],
+ [(q1,1),(q2,2),(q3,3)],
+ (1.0)|000><000|
+>
+---SDCGrover---

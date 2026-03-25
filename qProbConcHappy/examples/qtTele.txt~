@@ -1,0 +1,15 @@
+---QuantumTeleport---
+hist: (1000, [x1,x2])
+k: 100
+<
+ H(q2); CNOT(q2,q3);
+ skip (+)(1%3) (X(q1) (+)(1%2) H(q1));
+ CNOT(q1,q2); H(q1); Meas(x1,q1); Meas(x2,q2);
+ if (x2==0) then {skip} else {X(q3)};
+ if (x1==0) then {skip} else {Z(q3)};
+ Meas(x3,q3),
+ [(x1,0),(x2,0),(x3,0)],
+ [(q1,1),(q2,2),(q3,3)],
+ (1.0)|000><000|
+>
+---QuantumTeleport---

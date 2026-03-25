@@ -1,0 +1,55 @@
+---DinPhil3---
+k: 500
+cs: [(st1,1),(st2,1),(st3,1),(cs1,1),(cs2,1),(cs3,1),(eat1,0),(eat2,0),(eat3,0)]
+
+ while(tt) do{
+  while(st1==1) do{
+   st1:=2 or skip
+  };
+  await(cs1==1 AND cs3==1) do{
+   cs1:=cs1-1;
+   cs3:=cs3-1
+  };
+  st1:=0;
+  while(st1==0) do{
+   st1:=1 or skip
+  };
+   eat1:=eat1+1;
+   cs1:=cs1+1;
+   cs3:=cs3+1
+ }
+ ||
+ while(tt) do{
+  while(st2==1) do{
+   st2:=2 or skip
+  };
+  await(cs2==1 AND cs1==1) do{
+   cs2:=cs2-1;
+   cs1:=cs1-1
+  };
+  st2:=0;
+  while(st2==0) do{
+   st2:=1 or skip
+  };
+   eat2:=eat2+1;
+   cs2:=cs2+1;
+   cs1:=cs1+1
+ }
+ ||
+ while(tt) do{
+  while(st3==1) do{
+   st3:=2 or skip
+  };
+  await(cs3==1 AND cs2==1) do{
+   cs3:=cs3-1;
+   cs2:=cs2-1
+  };
+  st3:=0;
+  while(st3==0) do{
+   st3:=1 or skip
+  };
+   eat3:=eat3+1;
+   cs3:=cs3+1;
+   cs2:=cs2+1
+ }
+---DinPhil3---

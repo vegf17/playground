@@ -1,0 +1,62 @@
+---test2---
+k: 100
+cs: 0
+qs: 2
+
+X(q1)
+---test2--- 
+
+---test1---
+k: 100
+cs: 0
+qs: 4
+
+X(q0,q3);
+U2(q0,q1);
+U2(q0,q2);
+Oracle(q0,q1,q2,q3)
+---test1--- 
+
+---Grover2---
+k: 100
+cs: 2
+qs: 3
+
+X(q2);
+H(q0,q1,q2);
+TOF(q0,q1,q2);
+H(q0,q1);
+X(q0,q1);
+CZ(q0,q1);
+X(q0,q1);
+H(q0,q1);
+Meas(c0,q0);
+Meas(c1,q1);
+Reset(q2)
+
+
+---Grover2---
+
+
+---Grover---
+k: 100
+cs: 4
+qs: 4
+
+X(q3);
+H(q0,q1,q2,q3);
+while(c0 < 2) do{
+	 Oracle(q0,q1,q2,q3);
+	 H(q0,q1,q2);
+	 X(q0,q1,q2);
+	 CCZ(q0,q1,q2);
+	 X(q0,q1,q2);
+	 H(q0,q1,q2);
+	 c0:=c0+1
+};
+Meas(c1,q0);
+Meas(c2,q1);
+Meas(c3,q2);
+Reset(q3)
+
+---Grover---

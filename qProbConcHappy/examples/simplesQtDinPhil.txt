@@ -1,0 +1,32 @@
+---SimpleQtDinPhil---
+k: 200
+cs: [x1,x2,eat1,eat2,fst]
+qs: [q1,q2,q3,q4,q5,q6]
+
+(
+H(q1); CNOT(q1,q2);
+CNOT(q1,q3); CNOT(q5,q3); Meas(x1,q3);
+if (x1==0) then {CNOT(q1,q5); Umag2(q1)}
+   	   else {skip};
+Meas(x1,q1);
+await (x1==1) do {
+      eat1:=1;
+      if (x2==0) then {fst:=1} else {fst:=2}
+};
+x2:=1
+)
+||
+(
+H(q4); CNOT(q4,q5);
+CNOT(q4,q6); CNOT(q2,q6); Meas(x2,q6);
+if (x2==0) then {CNOT(q4,q2); Umag2(q4)}
+   	   else {skip};
+Meas(x2,q4);
+await (x2==1) do {
+      eat2:=1;
+      if (x1==0) then {fst:=2} else {fst:=1}
+};
+x1:=1
+)
+
+---SimpleQtDinPhil---

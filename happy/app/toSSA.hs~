@@ -1,0 +1,221 @@
+module ToSSA where
+
+{-
+This file aims to transform blocks in CFG into SSA
+We only consider ToCFG2, hence from data Node we only need to deal with Block, Test, and Empty
+-}
+
+import ToCFG2
+import Syntax
+import Com
+
+import Data.List
+
+type VarTrack = [(Var, [Var])]
+type JoinNodes = [([NodeId], NodeId)]
+
+-- runSSA :: String -> IO()
+-- runSSA s = do
+--   let c = testCom s
+--       (g, es, entry, exit, next) = toCFG c 0
+--       join_nodes = endDiv es []              
+--       (g', vart) = toSSAGraph g [] join_nodes
+--   putStrLn (drawCFG g' es)
+
+-- runGraph :: String -> Graph
+-- runGraph s = let c = testCom s
+--                  (g, es, entry, exit, next) = toCFG c 0
+--                  join_nodes = endDiv es []              
+--                  (g', vart) = toSSAGraph g [] join_nodes
+--              in g'
+
+edges1 = [(0,Uncond,1),(1,Uncond,2),(2,Uncond,3),(2,Uncond,4),(3,Uncond,5),(4,Uncond,5),(1,Uncond,6),(6,Uncond,7),(6,Uncond,8),(5,Uncond,9),(7,Uncond,9),(8,Uncond,9)] :: Edges
+edges2 = [(0,Uncond,1),(1,Uncond,2),(1,Uncond,3),(1,Uncond,4),(2,Uncond,5),(2,Uncond,6),(3,Uncond,7),(4,Uncond,7),(5,Uncond,7),(6,Uncond,7),(1,Uncond,8),(8,Uncond,7)] :: Edges
+
+--toSSA :: (Graph, Edges, [NodeId], [NodeId], NodeId) -> (Graph, Edges, [NodeId], [NodeId], NodeId)
+-- toSSAGraph :: Graph -> Edges -> VarTrack -> JoinNodes -> (Graph, VarTrack)
+-- toSSAGraph [] _ vart _ = ([], vart)
+-- toSSAGraph (h:t) eds vart join_nodes = let (g, vart') = toSSANode h vart join_nodes
+--                                            (t', vart'') = toSSAGraph t eds vart' join_nodes
+--                                        in (g:t', vart'')
+
+-- assuming that Node is a join node
+-- here we add to the top [CFGNot] phi functions with mother variables and the sons
+-- mother variables are then put in SSA notation in toSSANode
+appPhi :: Node -> VarTrack -> (Node, VarTrack)
+appPhi (Empty n) vart = ((Empty n), vart)
+appPhi node@(Test n lbexp) vart = let vars = getVar node -- variables node merges 
+                                      lvar = appPhiAux vart vars -- [(Var, [Var])]
+                                      phi = map (\(x, lx) -> Phi x lx) lvar
+                                  in (Test n (phi++lbexp), vart)
+appPhi node@(Block n lcom) vart = let vars = getVar node -- variables node merges 
+                                      lvar = appPhiAux vart vars -- [(Var, [Var])]
+                                      phi = map (\(x, lx) -> Phi x lx) lvar
+                                  in (Block n (phi++lcom), vart)
+appPhi _ = error "appPhi: Invalid kind of Node"                                     
+
+-- given VarTrack and a list of variables of a join node, returns a list of tuples composed of the
+-- mother variable and its sons
+appPhiAux :: VarTrack -> [Var] -> [(Var,[Var])]
+appPhiAux [] _ = []
+appPhiAux ((x, lx):t) vars = let vars_x = filter (\var -> elem var lx) vars
+                             in if null vars_x
+                                then appPhiAux t vars
+                                else (x, vars_x) : appPhiAux t vars
+
+isJoinNode :: Node -> JoinNodes -> Bool
+isJoinNode n [] = False
+isJoinNode n ((lx,x):t) = if elem n lx then True else isJoinNode n t
+
+toSSANode :: Node -> VarTrack -> JoinNodes -> (Node, VarTrack)
+toSSANode (Empty n) vart _ = ((Empty n), vart)
+toSSANode (Test n bexp) vart join_nodes = if isJoinNode n join_nodes
+                                          then let (Test n phi_bexp) = (Test n bexp) vart
+                                                   (ssa_phi_bexp, vart') = toSSAListCFGNot phi_bexp vart
+                                               in (Test ssa_phi_bexp, vart')
+                                          else  let bexpSSA = toSSAListCFGNot bexp vart
+                                                in (Test n bexpSSA, vart)
+toSSANode (Block n lcom) vart join_nodes= if isJoinNode n join_nodes
+                                          then let (Block n phi_lcom) = (Block n lcomn) vart
+                                                   (ssa_phi_lcom, vart') = toSSAListCFGNot phi_lcom vart
+                                               in (Block n ssa_phil_lcom, vart')
+                                          else let (lcomSSA, vart') = toSSAListCFGNot lcom vart
+                                               in (Block n lcomSSA, vart')
+toSSANode _ _ = error "toSSANode: Invalid kind of Node"
+
+toSSAListCFGNot :: [CFGNot] -> VarTrack -> ([CFGNot], VarTrack)
+toSSAListCFGNot [] vt = ([],  vt)
+toSSAListCFGNot [h] vt = let (c, vt') = toSSACFGNot h vt
+                         in ([c], vt')
+toSSAListCFGNot (h:t) vt = let (c, vt') = toSSACFGNot h vt
+                               (t', vt'') = toSSAListCFGNot t vt'
+                           in (c:t', vt'')
+
+toSSACFGNot :: CFGNot -> VarTrack -> (CFGNot, VarTrack)
+toSSACFGNot SSkip vart = (SSkip, vart)
+toSSACFGNot (SAsg x ae) vart = if (null $ (filter (\(var, lvar) -> var==x)) vart) == False
+                                  then let ae' = replaceVarAExp ae vart
+                                           id = length $ snd $ head $ filter (\(var, lvar) -> var==x) vart
+                                           newx = x ++ show(id)
+                                           vart' = map (\(var, lvar) -> if var==x then (var, newx:lvar) else (var, lvar)) vart
+                                       in (SAsg newx ae', vart')
+                                  else let newx = x++show(0)
+                                           vart' = (x,[newx]):vart
+                                           ae' = replaceVarAExp ae vart'
+                                       in (SAsg newx ae', vart')
+toSSACFGNot (BE bexp) vart = (replaceVarBExp bexp vart, vart)
+
+
+startDiv :: Edges -> [(NodeId, [NodeId])] -> [(NodeId, [NodeId])]
+startDiv [] divs = divs
+startDiv ((in1,l1,ex1):t) divs = let divNodes = map (\(_,_,ex) -> ex) $ filter (\(in',_,_) -> in1==in') t
+                                     (n, ndiv) = (in1, ex1:divNodes)
+                                 in if length ndiv<=1 || (elem n (map fst divs))
+                                    then startDiv t divs
+                                    else startDiv t ((n,ndiv):divs)
+
+endDiv :: Edges -> JoinNodes -> JoinNodes
+endDiv [] joins = joins
+endDiv ((in1,l1,ex1):t) joins = let joinNodes = map (\(in',_,_) -> in') $ filter (\(_,_,ex) -> ex1==ex) t
+                                    (njoin, n) = (in1:joinNodes, ex1)
+                                in if length njoin<=1 || (elem n (map snd joins))
+                                   then endDiv t joins
+                                   else endDiv t ((njoin,n):joins)
+
+
+replaceVarAExp :: AExp -> VarTrack -> AExp
+replaceVarAExp (Var x) vart = let newx = head $ snd $ head $ filter (\(var, lvar) -> var==x) vart
+                              in (Var newx)
+replaceVarAExp (Num num) _ = Num num
+replaceVarAExp (Plus ae1 ae2) vart = let ae1' = replaceVarAExp ae1 vart
+                                         ae2' = replaceVarAExp ae2 vart
+                                     in Plus ae1' ae2'
+replaceVarAExp (Minus ae1 ae2) vart = let ae1' = replaceVarAExp ae1 vart
+                                          ae2' = replaceVarAExp ae2 vart
+                                      in Minus ae1' ae2'
+replaceVarAExp (Mult ae1 ae2) vart = let ae1' = replaceVarAExp ae1 vart
+                                         ae2' = replaceVarAExp ae2 vart
+                                     in Mult ae1' ae2'
+replaceVarAExp (Div ae1 ae2) vart = let ae1' = replaceVarAExp ae1 vart
+                                        ae2' = replaceVarAExp ae2 vart
+                                    in Div ae1' ae2'
+replaceVarAExp (Negate ae) vart = let ae' = replaceVarAExp ae vart
+                                  in Negate ae'
+
+
+replaceVarBE :: CFGNot -> VarTrack -> [CFGNot]
+replaceVarBE (BE b) vart = let b' = replaceVarBExp b vart
+                           in [BE b']
+replaceVarBE _ _ = error "replaceVarBE: not a Boolean expression"                              
+
+replaceVarBExp :: BExp -> VarTrack -> BExp
+replaceVarBExp BTrue _ = BTrue
+replaceVarBExp BFalse _ = BFalse
+replaceVarBExp (Not bexp) vart = let bexp' = replaceVarBExp bexp vart
+                                 in Not bexp'
+replaceVarBExp (And be1 be2) vart = let be1' = replaceVarBExp be1 vart
+                                        be2' = replaceVarBExp be2 vart
+                                    in And be1' be2'
+replaceVarBExp (OrB be1 be2) vart = let be1' = replaceVarBExp be1 vart
+                                        be2' = replaceVarBExp be2 vart
+                                    in OrB be1' be2'
+replaceVarBExp (Equ be1 be2) vart = let be1' = replaceVarAExp be1 vart
+                                        be2' = replaceVarAExp be2 vart
+                                    in Equ be1' be2'
+replaceVarBExp (Leq be1 be2) vart = let be1' = replaceVarAExp be1 vart
+                                        be2' = replaceVarAExp be2 vart
+                                    in Leq be1' be2'
+replaceVarBExp (Geq be1 be2) vart = let be1' = replaceVarAExp be1 vart
+                                        be2' = replaceVarAExp be2 vart
+                                    in Geq be1' be2'
+replaceVarBExp (Less be1 be2) vart = let be1' = replaceVarAExp be1 vart
+                                         be2' = replaceVarAExp be2 vart
+                                     in Less be1' be2'
+replaceVarBExp (Gre be1 be2) vart = let be1' = replaceVarAExp be1 vart
+                                        be2' = replaceVarAExp be2 vart
+                                    in Gre be1' be2'
+
+getVarNode :: Graph -> NodeId -> [Var]
+getVarNode [] _ = []
+getVarNode (h:t) id = if (getNodeId h == id)
+                      then getVar h
+                      else getVarNode t id
+
+getVar :: Node -> [Var]
+getVar (Block id lcmds) = getVarListCFGNot lcmds
+getVar (Test id lcmds) = getVarListCFGNot lcmds
+getVar _ = error "getVar: node that allowed"
+
+getVarListCFGNot :: [CFGNot] -> [Var]
+getVarListCFGNot lcmds = concat $ map getVarCFGNot lcmds
+
+getVarCFGNot :: CFGNot -> [Var]
+getVarCFGNot SSkip = []
+getVarCFGNot (SAsg x aexp) = x : getVarAExp aexp
+getVarCFGNot (Phi x _) = [x]
+getVarCFGNot (BE bexp) = getVarBExp bexp
+
+getVarAExp :: AExp -> [Var]
+getVarAExp (Var x) = [x]
+getVarExp (Num _) = []
+getVarExp (Negate aexp) = getVarExp aexp
+getVarExp (Plus ae1 ae2) = (getVarExp ae1) ++ (getVarExp ae2)
+getVarExp (Minus ae1 ae2) = (getVarExp ae1) ++ (getVarExp ae2)
+getVarExp (Mult ae1 ae2) = (getVarExp ae1) ++ (getVarExp ae2)
+getVarExp (Div ae1 ae2) = (getVarExp ae1) ++ (getVarExp ae2)
+
+getVarBExp :: BExp -> [Var]
+getVarBExp (Not be) = getVarBExp be
+getVarBExp (And be1 be2) = (getVarBExp be1) ++ (getVarBExp be2)
+getVarBExp (OrB be1 be2) = (getVarBExp be1) ++ (getVarBExp be2)
+getVarBExp (Equ ae1 ae2) = (getVarAExp ae1) ++ (getVarAExp ae2)
+getVarBExp (Leq ae1 ae2) = (getVarAExp ae1) ++ (getVarAExp ae2)
+getVarBExp (Geq ae1 ae2) = (getVarAExp ae1) ++ (getVarAExp ae2)
+getVarBExp (Less ae1 ae2) = (getVarAExp ae1) ++ (getVarAExp ae2)
+getVarBExp (Gre ae1 ae2) = (getVarAExp ae1) ++ (getVarAExp ae2)
+
+getNodeId :: Node -> NodeId
+getNodeId (Block id _) = id
+getNodeId (Test id _) = id
+getNodeId (Empty id) = id
+getNodeId _ = error "getNodeId: node not allowed"

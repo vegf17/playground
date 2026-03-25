@@ -1,0 +1,48 @@
+---ProbDinPhil2---
+k: 500
+cs:[(st1,1),(st2,1),(cs1,1),(cs2,1),(try1,0),(try2,0),(chops1,0),(chops2,0),(eat1,0),(eat2,0)]
+
+ while(tt) do{
+  while(st1==1) do{st1:=2 or skip};
+  (try1:=1 or try1:=0);
+  while(try1==1) do{
+   (chops1:=-1 (+)(1%2) chops1:=1);
+   if(chops1==1)
+    then {
+     await(cs1==1) do {cs1:=cs1-1};
+     if(cs2==1) then {cs2:=cs2-1; try1:=0}
+     else {cs1:=cs1+1}
+    }
+    else{
+     await(cs2==1) do {cs2:=cs2-1};
+     if(cs1==1) then {cs1:=cs1-1; try1:=0}
+     else {cs2:=cs2+1}
+    }
+  };
+  st1:=0;
+  while(st1==0) do {st1:=1 or skip};
+  eat1:=eat1+1; cs1:=cs1+1; cs2:=cs2+1
+ }
+ ||
+ while(tt) do{
+  while(st2==1) do{st2:=2 or skip};
+  (try2:=1 or try2:=0);
+  while(try2==1) do{
+   (chops2:=-1 (+)(1%2) chops2:=1);
+   if(chops2==1)
+    then {
+     await(cs2==1) do {cs2:=cs2-1};
+     if(cs1==1) then {cs1:=cs1-1; try2:=0}
+     else {cs2:=cs2+1}
+    }
+    else{
+     await(cs1==1) do {cs1:=cs1-1};
+     if(cs2==1) then {cs2:=cs2-1; try2:=0}
+     else {cs1:=cs1+1}
+    }
+  };
+  st2:=0;
+  while(st2==0) do {st2:=1 or skip};
+  eat2:=eat2+1; cs2:=cs2+1; cs1:=cs1+1
+ }
+---ProbDinPhil2---

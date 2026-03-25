@@ -1,0 +1,64 @@
+module Run where
+
+import KStep
+--import HistogramSem
+--import ParserCom
+--import ParserFile
+import Syntax
+import Examples
+import Beautify
+import User_Gates
+
+import System.Exit
+import Data.List
+import Data.Matrix
+import Data.Complex
+
+
+--Receives a filename and a scheduler, defined by the user, and executes runKStepSch for each
+--program inside the filename
+-- runSem :: String -> Sch -> IO()
+-- runSem path sch = do
+--   fileContent <- readFile path
+--   case testsplitFile fileContent of
+--     Left err -> print err  -- Print error if parsing fails
+--     Right (ud, configs) -> do
+--       writeFile "./user_gates.txt" ("user_defined_gates = [\n\t" ++ (toFileFormat ud) ++ "]")
+--       runSemAux configs sch
+
+-- toFileFormat :: [(String, [[Complex Double]])] -> String
+-- toFileFormat [] = ""
+-- toFileFormat ((g_name, g_m):[]) = "(" ++ show (g_name) ++ ", fromLists " ++ show (g_m) ++ ")"
+-- toFileFormat ((g_name, g_m):t) = "(" ++ show (g_name) ++ ", fromLists" ++ show (g_m) ++ ")\n" ++ toFileFormat t 
+
+
+runSem :: String -> Sch -> IO()
+runSem path sch = do
+  fileContent <- readFile path
+  case parseRun fileContent of
+    Left err -> print err  -- Print error if parsing fails
+    Right configs -> runSemAux configs sch
+    
+
+runSemAux ::  [((String, (Int, [[String]]), Int), (C,StC,L,StQ))] -> Sch -> IO()
+runSemAux [] _ = return ()
+runSemAux (((name, rep, k),(c,sc,l,sq)):t) sch = do
+  let result = runKStepSch sch c (sc, l, sq) k
+  putStrLn $ showRun (name, result)
+  runSemAux t sch
+
+
+--Receives a filename and shows a Histogram for each program inside the filename
+runHist :: String -> IO()
+runHist path = do
+  fileContent <- readFile path
+  case parseRun fileContent of
+    Left err -> print err  -- Print error if parsing fails
+    Right configs -> (runHistAux configs) >> return ()
+
+runHistAux :: [((String, (Int, [[String]]), Int), (C,StC,L,StQ))] -> IO ExitCode
+runHistAux [] = return (ExitFailure 1)
+runHistAux (((name, rep, k),(c,sc,l,sq)):t) = do
+  showHist name rep c (sc,l,sq) k
+  runHistAux t
+  
