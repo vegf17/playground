@@ -12,7 +12,8 @@ import QuantumCalc
 
 %name file File
 %name prog Prog
-%name com Conf
+%name com C
+%name conf Conf
 %name aexp AExp
 %name bexp BExp
 %name stc StC
@@ -495,7 +496,10 @@ testFile s = file $ lexer s
 testProg :: String -> ((String,(Int,[[String]]),Int),(C,StC,L,StQ))
 testProg s = prog $ lexer s
 
-testC :: String -> Conf
+testConf :: String -> Conf
+testConf s = conf $ lexer s
+
+testC :: String -> C
 testC s = com $ lexer s
 
 testAExp :: String -> AExp

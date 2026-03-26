@@ -19,6 +19,10 @@ import Data.List
 
 type VarTrack = [(Var, [Var])]
 type JoinNodes = [([NodeId], NodeId)]
+type NodeVarTrack = [(NodeId, VarTrack)]
+
+data VarLog = Var Int
+
 
 runSSA :: String -> IO()
 runSSA s = do
@@ -38,19 +42,22 @@ edges1 = [(0,Uncond,1),(1,Uncond,2),(2,Uncond,3),(2,Uncond,4),(3,Uncond,5),(4,Un
 edges2 = [(0,Uncond,1),(1,Uncond,2),(1,Uncond,3),(1,Uncond,4),(2,Uncond,5),(2,Uncond,6),(3,Uncond,7),(4,Uncond,7),(5,Uncond,7),(6,Uncond,7),(1,Uncond,8),(8,Uncond,7)] :: Edges
 
 --toSSA :: (Graph, Edges, [NodeId], [NodeId], NodeId) -> (Graph, Edges, [NodeId], [NodeId], NodeId)
-toSSAGraph :: Graph -> Edges -> VarTrack -> (Graph, VarTrack)
-toSSAGraph [] _ vart = ([], vart)
-toSSAGraph (h:t) eds vart = let (g, vart') = toSSANode h vart 
-                                (t', vart'') = toSSAGraph t eds vart' 
-                            in (g:t', vart'')
+toSSAGraph :: Graph -> Edges -> NodeVarTrack -> (Graph, NodeVarTrack)
+toSSAGraph [] _ nvart = ([], nvart)
+toSSAGraph (h:t) eds nvart = let (g, nvart') = toSSANode h eds nvart
+                                (t', nvart'') = toSSAGraph t eds nvart' 
+                            in (g:t', nvart'')
 
-toSSANode :: Node -> VarTrack -> (Node, VarTrack)
-toSSANode (Empty n) vart = (Empty n, vart)
-toSSANode (Test n bexp) vart = let (bexpSSA, vart') = toSSAListCFGNot bexp vart
-                               in (Test n bexpSSA, vart')
-toSSANode (Block n lcom) vart = let (lcomSSA, vart') = toSSAListCFGNot lcom vart
-                                in (Block n lcomSSA, vart')
+--needs to verify if this node is a join node
+--if it is a join node, then we need to lookup the predecessors to get information about the variables
+toSSANode :: Node -> NodeVarTrack -> (Node, NodeVarTrack)
+toSSANode (Empty n) nvart = (Empty n, nvart)
+toSSANode (Test n lcom) nvart = let (bexpSSA, nvart') = toSSAListCFGNot lcom nvart
+                               in (Test n bexpSSA, nvart')
+toSSANode (Block n lcom) nvart = let (lcomSSA, nvart') = toSSAListCFGNot lcom nvart
+                                in (Block n lcomSSA, nvart')
 toSSANode _ _ = error "toSSANode: Invalid kind of Node"
+
 
 toSSAListCFGNot :: [CFGNot] -> VarTrack -> ([CFGNot], VarTrack)
 toSSAListCFGNot [] vt = ([],  vt)

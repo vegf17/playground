@@ -5,8 +5,10 @@ import Syntax
 -- changeSt i n s is the state [s|i=n] (here, we are not allowing attributions to non-declared
 -- identifiers - see section 11.2 from the article) 
 changeSt :: CVar -> Value -> StC -> StC
-changeSt i n [] = []
-changeSt i n ((i',n'):t) = if (i'==i) then (i',n):(changeAll i n t) else (i',n'):(changeSt i n t)
+changeSt i n [] = error ("changeSt (SemAEBE): variable: " ++ i ++ " is not declared")
+changeSt i n ((i',n'):t) = if (i'==i)
+                           then (i',n):(changeAll i n t)
+                           else (i',n'):(changeSt i n t)
 
 -- Auxiliary function to changeSt (changeAll i n s changes the value of all occurrences of i in s)
 changeAll :: CVar -> Value -> StC -> StC 

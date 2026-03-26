@@ -59,7 +59,8 @@ extra-source-files: app/Beautify.hs,
                     app/SmallStep.hs,
                     app/KStep.hs,
                     app/Syntax.hs,
-                    app/User_Gates.hs
+                    app/User_Gates.hs,
+                    app/Collect_Samples.hs
 
 common warnings
     --ghc-options: -Wall
@@ -83,7 +84,8 @@ executable qProbConcHappy
                    SmallStep,
                    KStep,
                    Syntax,
-                   User_Gates
+                   User_Gates,
+                   Collect_Samples
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

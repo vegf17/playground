@@ -1,0 +1,4 @@
+module Collect_Samples where
+
+-- [((ProgramName, Number_Samples, Number_KStep), (C,StC,L,StQ))]
+collectSamples :: [((String, (Int, [[String]]), Int), (C,StC,L,StQ))]
