@@ -1,0 +1,17 @@
+---QtCoinTossConc---
+hist: 10
+k: 10
+cs: 1
+qs: 1
+
+H(q0); Meas(c0,q0)
+---QtCoinTossConc---
+
+
+---ProbCommand---
+hist: 10
+k: 1
+cs: 1
+
+c0:=10 (+)(1%2) c0:=1;skip
+---ProbCommand---

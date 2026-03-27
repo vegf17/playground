@@ -4,14 +4,14 @@ import Syntax
 
 -- changeSt i n s is the state [s|i=n] (here, we are not allowing attributions to non-declared
 -- identifiers - see section 11.2 from the article) 
-changeSt :: CVar -> Value -> StC -> StC
+changeSt :: CVar -> DoubVal -> StC -> StC
 changeSt i n [] = error ("changeSt (SemAEBE): variable: " ++ i ++ " is not declared")
 changeSt i n ((i',n'):t) = if (i'==i)
                            then (i',n):(changeAll i n t)
                            else (i',n'):(changeSt i n t)
 
 -- Auxiliary function to changeSt (changeAll i n s changes the value of all occurrences of i in s)
-changeAll :: CVar -> Value -> StC -> StC 
+changeAll :: CVar -> DoubVal -> StC -> StC 
 changeAll i n [] = []
 changeAll i n ((i',n'):t)
     | (i==i') = (i',n):(changeAll i n t)
@@ -19,9 +19,9 @@ changeAll i n ((i',n'):t)
 
 --START: evaluate arithmetic expressions--
 -- bigStepExp e s = n means that <e,s> ->* n (see Fig 3 from the article)
-bigStepExp :: AExp -> StC -> Value
+bigStepExp :: AExp -> StC -> DoubVal
 bigStepExp (Num n) s = n -- 1st rule
-bigStepExp (Var i) s = getValue s i -- 3rd rule
+bigStepExp (Var i) s = getDoubVal s i -- 3rd rule
 bigStepExp Pi s = pi
 bigStepExp (Sqrt e) s = let n = bigStepExp e s
                         in sqrt(n)
@@ -33,10 +33,10 @@ bigStepExp (Mult e1 e2) s = (bigStepExp e1 s) * (bigStepExp e2 s) -- final rules
 bigStepExp (Div e1 e2) s = (bigStepExp e1 s) / (bigStepExp e2 s) -- final rules
 --bigStepExp (Mod n exp) s = (bigStepExp exp s) `mod` n
 
--- getValue s i = the value that state s attributes to identifier i
-getValue :: StC -> CVar -> Value
-getValue [] i = error ("No value attributed to identifier \""++i++"\" was found.")
-getValue ((i',n'):t) i = if (i==i') then n' else getValue t i
+-- getDoubVal s i = the value that state s attributes to identifier i
+getDoubVal :: StC -> CVar -> DoubVal
+getDoubVal [] i = error ("getDoubVal (SemAEBE): No value attributed to identifier \""++i++"\" was found.")
+getDoubVal ((i',n'):t) i = if (i==i') then n' else getDoubVal t i
 --END: evaluate arithmetic expressions--
 
 --START: evaluate Boolean expressions--
@@ -94,7 +94,7 @@ declared i ((i',n'):t) = if (i' == i) then True else (declared i t)
 
 
 --START: evaluate Arg expressions--
-evalArg :: AExp -> Value
+evalArg :: AExp -> DoubVal
 evalArg (Num n) = n
 evalArg Pi = pi
 evalArg (Sqrt exp) = let n = evalArg exp

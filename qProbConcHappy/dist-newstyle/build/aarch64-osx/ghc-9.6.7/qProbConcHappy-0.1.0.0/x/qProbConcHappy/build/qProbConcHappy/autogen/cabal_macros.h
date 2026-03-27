@@ -10,6 +10,16 @@
   (major1) == 0 && (major2) <  1 || \
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_qProbConcHappy */
+/* package aeson-2.2.3.0 */
+#ifndef VERSION_aeson
+#define VERSION_aeson "2.2.3.0"
+#endif /* VERSION_aeson */
+#ifndef MIN_VERSION_aeson
+#define MIN_VERSION_aeson(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  2 || \
+  (major1) == 2 && (major2) == 2 && (minor) <= 3)
+#endif /* MIN_VERSION_aeson */
 /* package array-0.5.8.0 */
 #ifndef VERSION_array
 #define VERSION_array "0.5.8.0"
@@ -30,16 +40,36 @@
   (major1) == 4 && (major2) <  18 || \
   (major1) == 4 && (major2) == 18 && (minor) <= 3)
 #endif /* MIN_VERSION_base */
-/* package game-probability-1.0 */
-#ifndef VERSION_game_probability
-#define VERSION_game_probability "1.0"
-#endif /* VERSION_game_probability */
-#ifndef MIN_VERSION_game_probability
-#define MIN_VERSION_game_probability(major1,major2,minor) (\
+/* package bytestring-0.11.5.4 */
+#ifndef VERSION_bytestring
+#define VERSION_bytestring "0.11.5.4"
+#endif /* VERSION_bytestring */
+#ifndef MIN_VERSION_bytestring
+#define MIN_VERSION_bytestring(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  11 || \
+  (major1) == 0 && (major2) == 11 && (minor) <= 5)
+#endif /* MIN_VERSION_bytestring */
+/* package directory-1.3.8.5 */
+#ifndef VERSION_directory
+#define VERSION_directory "1.3.8.5"
+#endif /* VERSION_directory */
+#ifndef MIN_VERSION_directory
+#define MIN_VERSION_directory(major1,major2,minor) (\
   (major1) <  1 || \
-  (major1) == 1 && (major2) <  0 || \
-  (major1) == 1 && (major2) == 0 && (minor) <= 0)
-#endif /* MIN_VERSION_game_probability */
+  (major1) == 1 && (major2) <  3 || \
+  (major1) == 1 && (major2) == 3 && (minor) <= 8)
+#endif /* MIN_VERSION_directory */
+/* package filepath-1.4.301.0 */
+#ifndef VERSION_filepath
+#define VERSION_filepath "1.4.301.0"
+#endif /* VERSION_filepath */
+#ifndef MIN_VERSION_filepath
+#define MIN_VERSION_filepath(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  4 || \
+  (major1) == 1 && (major2) == 4 && (minor) <= 301)
+#endif /* MIN_VERSION_filepath */
 /* package matrix-0.3.6.4 */
 #ifndef VERSION_matrix
 #define VERSION_matrix "0.3.6.4"
@@ -60,16 +90,26 @@
   (major1) == 2 && (major2) <  3 || \
   (major1) == 2 && (major2) == 3 && (minor) <= 1)
 #endif /* MIN_VERSION_mtl */
-/* package random-1.0.1.1 */
-#ifndef VERSION_random
-#define VERSION_random "1.0.1.1"
-#endif /* VERSION_random */
-#ifndef MIN_VERSION_random
-#define MIN_VERSION_random(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  0 || \
-  (major1) == 1 && (major2) == 0 && (minor) <= 1)
-#endif /* MIN_VERSION_random */
+/* package mwc-probability-2.3.1 */
+#ifndef VERSION_mwc_probability
+#define VERSION_mwc_probability "2.3.1"
+#endif /* VERSION_mwc_probability */
+#ifndef MIN_VERSION_mwc_probability
+#define MIN_VERSION_mwc_probability(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  3 || \
+  (major1) == 2 && (major2) == 3 && (minor) <= 1)
+#endif /* MIN_VERSION_mwc_probability */
+/* package threepenny-gui-0.9.4.2 */
+#ifndef VERSION_threepenny_gui
+#define VERSION_threepenny_gui "0.9.4.2"
+#endif /* VERSION_threepenny_gui */
+#ifndef MIN_VERSION_threepenny_gui
+#define MIN_VERSION_threepenny_gui(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  9 || \
+  (major1) == 0 && (major2) == 9 && (minor) <= 4)
+#endif /* MIN_VERSION_threepenny_gui */
 /* package transformers-0.6.1.0 */
 #ifndef VERSION_transformers
 #define VERSION_transformers "0.6.1.0"

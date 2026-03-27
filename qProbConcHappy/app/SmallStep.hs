@@ -7,7 +7,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.Maybe
 import Control.Monad
 import Control.Monad.Identity
-import System.Random
+--import System.Random
 import Data.Either
 import Data.List
 import Data.Ord

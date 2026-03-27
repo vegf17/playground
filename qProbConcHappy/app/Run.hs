@@ -9,12 +9,18 @@ import Examples
 import Beautify
 import User_Gates
 import Com
+import Collect_Samples
+import JSONCodify
+import GUI
 
 import System.Exit
 import Data.List
 import Data.Matrix
 import Data.Complex
 
+import qualified Data.ByteString.Lazy as BL
+import Graphics.UI.Threepenny.Core
+import qualified Graphics.UI.Threepenny as UI
 
 --Receives a filename and a scheduler, defined by the user, and executes runKStepSch for each
 --program inside the filename
@@ -47,7 +53,7 @@ runSem path sch = do
   runSemAux configs sch
     
 
-runSemAux ::  [((String, (Int, [[String]]), Int), (C,StC,L,StQ))] -> Sch -> IO()
+runSemAux ::  [((String, Int, Int), (C,StC,L,StQ))] -> Sch -> IO()
 runSemAux [] _ = return ()
 runSemAux (((name, rep, k),(c,sc,l,sq)):t) sch = do
   let result = runKStepSch sch c (sc, l, sq) k
@@ -56,16 +62,21 @@ runSemAux (((name, rep, k),(c,sc,l,sq)):t) sch = do
 
 
 --Receives a filename and shows a Histogram for each program inside the filename
--- runHist :: String -> IO()
--- runHist path = do
---   fileContent <- readFile path
---   case parseRun fileContent of
---     Left err -> print err  -- Print error if parsing fails
---     Right configs -> (runHistAux configs) >> return ()
+runHist :: String -> Sch -> IO()
+runHist path sch = do
+  json_file <- prepareJsonFile path
+  resetJsonFile json_file
+  fileContent <- readFile path
+  let configs = testFile fileContent
+  runHistAux configs sch json_file
+  startGUI defaultConfig (setup json_file)
 
--- runHistAux :: [((String, (Int, [[String]]), Int), (C,StC,L,StQ))] -> IO ExitCode
--- runHistAux [] = return (ExitFailure 1)
--- runHistAux (((name, rep, k),(c,sc,l,sq)):t) = do
---   showHist name rep c (sc,l,sq) k
---   runHistAux t
+runHistAux :: ListProgInfoFile -> Sch -> FilePath -> IO ()
+runHistAux [] _ _ = return ()
+runHistAux (h:t) sch json_file = do
+  prog1 <- collectSamples h sch -- (String, [(Int, (StC, StQ))])
+  --putStrLn $ showCollectSamples prog1
+  appendJson json_file prog1
+  runHistAux t sch json_file -- [(String, [(Int, (StC, StQ))])]
+  
   

@@ -161,7 +161,7 @@ numQbits n = ceiling $ logBase 2 (fromIntegral n)
 
 --Remove elements whoose probability is zero or infinite
 --Example: clean [(mem1, 0.5), (mem2, 0.0), (mem3, infty)] = [(mem1, 0.5)]
---clean :: [(Mem, Prob)] -> [(Mem, Prob)]
+--clean :: [(Mem, DoubProb)] -> [(Mem, DoubProb)]
 --clean l = filter cond l
 --  where cond = (\(_,p) -> (p/=0) && (isInfinite p == False))
 
@@ -172,11 +172,11 @@ numQbits n = ceiling $ logBase 2 (fromIntegral n)
 --The functions limitPrec, limitPrecDouble, limitPrecisionComplex, and limitPrecisionS are used to
 --limit the number of digits that are used when displaying the coefficients and/or the probabilities
 --of states
-limitPrec :: Int -> [[(Mem, Prob)]] -> [[(Mem, Prob)]]
+limitPrec :: Int -> [[(Mem, DoubProb)]] -> [[(Mem, DoubProb)]]
 limitPrec _ [] = []
 limitPrec n (h:t) = limitPrecAux n h : limitPrec n t
 
-limitPrecAux :: Int -> [(Mem, Prob)] -> [(Mem, Prob)]
+limitPrecAux :: Int -> [(Mem, DoubProb)] -> [(Mem, DoubProb)]
 limitPrecAux n l = map (\((sc,sq),p) -> ((sc,limitPrecisionS n sq), limitPrecDouble n p)) l
 
 limitPrecDouble :: Int -> Double -> Double
@@ -197,19 +197,19 @@ limitPrecisionS n st = fromLists [ f l | l <- lst]
         f = map (\e -> limitPrecisionComplex n e)
 
 
-limPrecKStep :: Int -> [([(Mem, Prob)], Double)] -> [([(Mem, Prob)], Double)]
+limPrecKStep :: Int -> [([(Mem, DoubProb)], Double)] -> [([(Mem, DoubProb)], Double)]
 limPrecKStep n l = [(limitPrecAux n dist, limitPrecDouble n q) | (dist, q) <- l]
 
   
--- (showProbMemList l) = String value corresponding to the (Mem, Prob) values inside l, with a comma and a
+-- (showProbMemList l) = String value corresponding to the (Mem, DoubProb) values inside l, with a comma and a
 -- new line character separating them
-showProbMemList :: [(Mem, Prob)] -> String 
+showProbMemList :: [(Mem, DoubProb)] -> String 
 showProbMemList [] = ""
 showProbMemList [c] = showProbMem c
 showProbMemList (h:t) = (showProbMem h) ++ " +\n" ++ (showProbMemList t)
 
 -- showProbMem (mem,p) = String value corresponding to (mem,p)
-showProbMem :: (Mem, Prob) -> String 
+showProbMem :: (Mem, DoubProb) -> String 
 showProbMem ((sc,sq),p) = let opDen = rmvPlus $ denOpToKetBraComplex sq
                           in case null opDen of
                                True -> (show p) ++ "·([" ++ showStC sc ++ "])"
@@ -217,12 +217,12 @@ showProbMem ((sc,sq),p) = let opDen = rmvPlus $ denOpToKetBraComplex sq
 
 -- showRun (s, md) = String value corresponding to the name of the program being executed, s,
 -- together with its results, md
-showRun :: (String, [(Mem, Prob)]) -> String
+showRun :: (String, [(Mem, DoubProb)]) -> String
 --showRun (s,md) = s ++ ": \n" ++ (showProbMemList $ addDistBeaut md) ++ "\n"
 showRun (s,md) = s ++ ": \n" ++ (showProbMemList $ limitPrecAux 5 (addDistBeaut md)) ++ "\n"
 --showRun (s,md) = s ++ ": \n" ++ showProbMemList (limitPrecAux 5 md) ++ "\n"
 
-addDistBeaut :: [(Mem, Prob)] -> [(Mem, Prob)]
+addDistBeaut :: [(Mem, DoubProb)] -> [(Mem, DoubProb)]
 addDistBeaut [] = []
 addDistBeaut dist@((mem,prob):t) = (mem, sum [p | (m,p) <- dist,  m==mem]) : addDistBeaut [(m,p) | (m,p) <- t, m/=mem]
 
@@ -237,22 +237,22 @@ addDistBeaut dist@((mem,prob):t) = (mem, sum [p | (m,p) <- dist,  m==mem]) : add
 --START: Functions for showing results when IO and convex coefficients are explicit--
 -- showRunK (s, md) = String value corresponding to the name of the program being executed, s,
 -- together with its results, md
-showRunK :: (String, [([(Mem, Prob)], Double)]) -> String
+showRunK :: (String, [([(Mem, DoubProb)], Double)]) -> String
 showRunK (s,md) = "\n" ++ s ++ ": \n" ++ showProbProbMemList md ++ "\n"
 
--- showProbProbMemList l = String value corresponding to the ([(Mem, Prob)],Double) values inside
+-- showProbProbMemList l = String value corresponding to the ([(Mem, DoubProb)],Double) values inside
 -- l, with a new line character separating them
-showProbProbMemList :: [([(Mem, Prob)], Double)] -> String
+showProbProbMemList :: [([(Mem, DoubProb)], Double)] -> String
 showProbProbMemList [] = ""
 showProbProbMemList [h] = showProbProbMem h
 showProbProbMemList (h:t) = (showProbProbMem h) ++ "\n" ++ (showProbProbMemList t)
 
 -- showProbProbMem (dist,p) = String value corresponding to (dist,p)
-showProbProbMem :: ([(Mem, Prob)], Double) -> String
+showProbProbMem :: ([(Mem, DoubProb)], Double) -> String
 showProbProbMem (dist, q) = (show q) ++ " -> " ++  (showProbMemListK dist)
 
 -- (showProbMemListK l) is similar to (showProbMemList l)
-showProbMemListK :: [(Mem, Prob)] -> String 
+showProbMemListK :: [(Mem, DoubProb)] -> String 
 showProbMemListK [] = ""
 showProbMemListK [c] = showProbMem c
 showProbMemListK (h:t) = (showProbMem h) ++ " +\n\t" ++ (showProbMemListK t)

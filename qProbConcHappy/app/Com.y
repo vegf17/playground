@@ -43,6 +43,7 @@ import QuantumCalc
   cs_kw { TokenCS }
   qs_kw { TokenQS }
   kstep_kw { TokenKStep }
+  hist_kw { TokenHist }
   --Command tokens
   skip { TokenSkip }
   ":=" { TokenAss }
@@ -109,12 +110,12 @@ import QuantumCalc
 
 -- Production rules for the grammar
 --Production rules for files
-File :: { [((String, (Int, [[String]]), Int), (C,StC,L,StQ))] }
+File :: { [((String, Int, Int), (C,StC,L,StQ))] }
 File : Prog File { $1 : $2 }
   | Prog { [$1] }
 
 --Production rules for programs
-Prog :: { ((String, (Int, [[String]]), Int), (C,StC,L,StQ))  }
+Prog :: { ((String, Int, Int), (C,StC,L,StQ))  }
 Prog : Identifier Info States C Identifier  { let
                                                 (hist,k) = $2
                                                 (cs,(l,qs)) = $3
@@ -125,12 +126,15 @@ Prog : Identifier Info States C Identifier  { let
 Identifier :: { String }
 Identifier : progsep { $1 }
 
-Info :: { ((Int, [[String]]), Int) }
+Info :: { (Int, Int) }
 Info : Hist  KStep {($1, $2)}
-  | KStep { ((0,[]), $1) }
+--  | KStep { ((0,[]), $1) }
 
-Hist :: { (Int, [[String]])  }
-Hist : {- empty -} { (0, []) }
+-- Hist :: { (Int, [[String]])  }
+-- Hist : {- empty -} { (0, []) }
+
+Hist :: { Int }
+Hist : hist_kw int { $2 }
 
 KStep :: { Int }
 KStep : kstep_kw int { $2 }
@@ -282,6 +286,7 @@ data Token =
   | TokenProgSep String
   | TokenCS
   | TokenQS
+  | TokenHist
   | TokenKStep
   --Commands tokens  
   | TokenSkip
@@ -344,6 +349,7 @@ lexer ('<':'=':rest) = TokenLE : lexer rest
 lexer ('>':'=':rest) = TokenGE : lexer rest
 lexer ('=':'=':rest) = TokenEq : lexer rest
 lexer ('|':'|':rest) = TokenPar : lexer rest
+lexer ('h':'i':'s':'t':':':rest) = TokenHist : lexer rest
 lexer ('k':':':rest) = TokenKStep : lexer rest
 lexer ('c':'s':':':rest) = TokenCS : lexer rest
 lexer ('q':'s':':':rest) = TokenQS : lexer rest
@@ -490,10 +496,10 @@ toOpDen ket bra = let ketSt = map stringToStQ ket
                   in foldr sumMatrices h t
 
 -- function that takes some input, parses it and prints out the result
-testFile :: String -> [((String,(Int,[[String]]),Int),(C,StC,L,StQ))]
+testFile :: String -> [((String,Int,Int),(C,StC,L,StQ))]
 testFile s = file $ lexer s
 
-testProg :: String -> ((String,(Int,[[String]]),Int),(C,StC,L,StQ))
+testProg :: String -> ((String,Int,Int),(C,StC,L,StQ))
 testProg s = prog $ lexer s
 
 testConf :: String -> Conf

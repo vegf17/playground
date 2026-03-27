@@ -9,15 +9,15 @@ type ConfL = (C, LMem)
 type Conf = (C, StC) -- depois mudar para StC para Mem
 
 --classical memory
-type StC = [(CVar, Value)]
+type StC = [(CVar, DoubVal)]
 type CVar = String
-type Value = Double
+type DoubVal = Double
 
 --quantum memory
 type StQ = Matrix (Complex Double) --quantum state, represented by a density operator 
 type QVar = String
 type QVarList = [QVar]
-type Prob = Double
+type DoubProb = Double
 type L = [(QVar, Loc)] -- linking function
 type Loc = Int
 
@@ -32,7 +32,7 @@ type Op = Matrix (Complex Double)-- operators are represented by matrices of com
 -- X = (C,LMem)
 -- V(S+X) = [(Either S X, Double)]
 -- ([((C,LMem), [(Either LMem (C,LMem), Double)])], (C,LMem))
-type ProbPath = ([(ConfL, [(Either LMem ConfL, Double)])], ConfL)
+type ProbPath = ([(ConfL, [(Either LMem ConfL, DoubProb)])], ConfL)
 
 --AExp expressions
 data AExp = Num Double

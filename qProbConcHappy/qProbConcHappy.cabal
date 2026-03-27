@@ -60,7 +60,9 @@ extra-source-files: app/Beautify.hs,
                     app/KStep.hs,
                     app/Syntax.hs,
                     app/User_Gates.hs,
-                    app/Collect_Samples.hs
+                    app/Collect_Samples.hs,
+                    app/JSONCodify.hs,
+                    app/GUI.hs
 
 common warnings
     --ghc-options: -Wall
@@ -85,7 +87,9 @@ executable qProbConcHappy
                    KStep,
                    Syntax,
                    User_Gates,
-                   Collect_Samples
+                   Collect_Samples,
+                   JSONCodify,
+                   GUI
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -96,11 +100,17 @@ executable qProbConcHappy
                       transformers ^>=0.6.1.0,
                       mtl ^>=2.3.1 ,
                       --parsec ^>=3.1.16.1,
-                      random >=1.0.1.1,
+                      --random >=1.0.1.1,
                       --Histogram ^>=0.1.0.2,
                       --gnuplot ^>=0.5.7,
-                      game-probability >=1.0,
-                      array
+                      --game-probability >=1.0,
+                      mwc-probability,
+                      array,
+                      aeson,
+                      threepenny-gui,
+                      bytestring,
+                      directory,
+                      filepath
 
     build-tool-depends: happy:happy
 
@@ -109,3 +119,5 @@ executable qProbConcHappy
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+    

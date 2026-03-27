@@ -18,7 +18,7 @@ import User_Gates
 pickUserGate :: String -> Op
 pickUserGate g = let l = [fromLists m | (gn,m) <- user_defined_gates, g==gn]
                  in   case l  of
-                        [] -> error ("Gate " ++ g ++ " was not defined by the user")
+                        [] -> error ("pickUserGate (QuantumCal): Gate " ++ g ++ " was not defined by the user")
                         otherwise -> head l
 
 applyUserGate :: String -> [Int] -> StQ -> StQ
@@ -36,9 +36,9 @@ apply1QbitGate m nums s = mult matrix s
 
 apply2QbitGate :: Op -> [Int] -> StQ -> StQ
 apply2QbitGate g nums s
-  | (length nums /= 2) =  error "First argument of function apply2QbitGate must be a list with two elements."
+  | (length nums /= 2) =  error "apply2QbitGate (QuantumCal): First argument of function apply2QbitGate must be a list with two elements."
   | otherwise = if (q1 == q2)
-                then error "The qubits in apply2QbitGate should be different"
+                then error "apply2QbitGate (QuantumCal): The qubits in apply2QbitGate should be different"
                 else mult matrix s
                      where q1 = head nums
                            q2 = last nums
@@ -54,9 +54,9 @@ apply2QbitGate g nums s
 --for (3+)-qubit gate
 applyNQbitGate :: Op -> [Int] -> StQ -> StQ
 applyNQbitGate g nums s
-  | ((length nums) > (numQubits s)) = error ("applyNQbitGate: The state does not have that many qubits")
+  | ((length nums) > (numQubits s)) = error ("applyNQbitGate (QuantumCalc): The state does not have that many qubits")
   | otherwise = if ((length $ nub nums) /= (length nums))
-                then error "The qubits in applyNQbitGate should be all different"
+                then error "applyNQbitGate (QuantumCalc): The qubits in applyNQbitGate should be all different"
                 else mult matrix s
                      where q1 = head nums
                            q_rest = tail nums
@@ -121,7 +121,7 @@ applyGate g nums s
     | g == S = applySgt nums s
     --  | g == Umag2 = applyUmag2 nums s
     --  | g == Vmag3 = applyVmag3 nums s
-    | otherwise = error ("The gate " ++ show (g) ++ " is not defined")
+    | otherwise = error ("applyGate (QuantumCalc): The gate " ++ show (g) ++ " is not defined")
 
 
 -- qNums vars l = list of integers corresponding to vars, according to linking function l
@@ -139,15 +139,15 @@ qNums _ [] = []
 qNums (h:t) l = qNumsAux h l : qNums t l
 
 qNumsAux :: QVar -> L -> Int
-qNumsAux q [] = error "qbit not initialized"
+qNumsAux q [] = error "qNumsAux (QuantumCalc): qbit not initialized"
 qNumsAux q ((q',n):t) = if q==q' then n else qNumsAux q t
 
 -- prob i n s = probability of measuring qubit number n in state |i>, with i=0,1, if the initial
 -- state of the system is s.
-prob :: Int -> Int -> StQ -> Prob
+prob :: Int -> Int -> StQ -> DoubProb
 prob i n s
     | (i == 0 || i == 1) = realPart $ matrixToElem $ mult mToStateDagger mToState -- equation (2.92) - Quantum Computation and Quantum Information (Nielson & Chuang)
-    | otherwise = error ((show i)++" cannot be the first argument of function prob.")
+    | otherwise = error ("prob (QuantumCalc): " ++ (show i)++" cannot be the first argument of function prob.")
         where nqubits = numQubits s
               m = if (i==0) then applyToSomeQ m0 [n] nqubits else applyToSomeQ m1 [n] nqubits
               mToState = mult m s
@@ -155,7 +155,9 @@ prob i n s
 
 -- matrixToDouble m returns the only element of matrix m, if it only contains one element
 matrixToElem :: Matrix a -> a
-matrixToElem m = if (length l == 1) then (head l) else error "Function matrixToDouble is only meant to receive matrices with only 1 element as argument."
+matrixToElem m = if (length l == 1)
+                 then (head l)
+                 else error "matrixToElem (QuantumCalc): Function matrixToDouble is only meant to receive matrices with only 1 element as argument."
     where l = toList m 
 
 -- dagger m = Hermitian conjugate/ adjoint/ conjugate transpose of matrix m, obtained by complex
@@ -168,7 +170,7 @@ dagger m = Data.Matrix.transpose $ complexConjugate m
 stateMeas :: Int -> Int -> StQ -> StQ
 stateMeas i n s
     | (i == 0 || i == 1) = fromLists (finalState) -- equation (2.93) - Quantum Computation and Quantum Information (Nielson & Chuang)
-    | otherwise = error ((show i)++" cannot be the first argument of function state.")
+    | otherwise = error ("stateMeas (QuantumCalc): " ++ (show i) ++ " cannot be the first argument of function state.")
         where nqubits = numQubits s
               m = if (i==0) then applyToSomeQ m0 [n] nqubits else applyToSomeQ m1 [n] nqubits
               mToState = mult m s
@@ -645,7 +647,7 @@ applyOpDenCZ l s
 
 -- prob i n s = probability of measuring qubit number n in state |i>, with i=0,1, if the initial
 -- state of the system is s.
-probOpDen :: Int -> Int -> StQ -> Prob
+probOpDen :: Int -> Int -> StQ -> DoubProb
 probOpDen i n s
     | (i == 0 || i == 1) = realPart $ trace $  mToState 
     | otherwise = error ((show i)++" cannot be the first argument of function prob.")

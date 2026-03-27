@@ -1,0 +1,106 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+module GUI where
+
+import Prelude hiding (div)
+import Graphics.UI.Threepenny.Core
+import qualified Graphics.UI.Threepenny as UI
+
+main :: IO ()
+main = startGUI defaultConfig setup
+
+setup :: Window -> UI ()
+setup window = do
+  return window # set title "Histogram UI"
+
+  ----------------------------------------
+  -- Title
+  ----------------------------------------
+  title <- UI.h1 #+ [string "Histogram Viewer"]
+                 # set UI.style [("text-align", "center")]
+
+  ----------------------------------------
+  -- Program dropdown
+  ----------------------------------------
+  programSelect <- UI.select
+  element programSelect #+ map (\x -> UI.option #+ [string x]) ["prog1", "prog2", "prog3"]
+
+  ----------------------------------------
+  -- Classical variable dropdown
+  ----------------------------------------
+  cvarSelect <- UI.select
+  element cvarSelect #+ map (\x -> UI.option #+ [string x]) ["x", "y", "steps"]
+  
+  ----------------------------------------
+  -- Quantum variable dropdown (placeholder)
+  ----------------------------------------
+  qvarSelect <- UI.select
+  element qvarSelect #+ map (\x -> UI.option #+ [string x]) ["q1", "q2"]
+
+  ----------------------------------------
+  -- Histogram area
+  ----------------------------------------
+  histogramBox <- UI.div
+    # set UI.style
+        [ ("border", "2px solid black")
+        , ("height", "400px")
+        , ("margin-top", "20px")
+        , ("display", "flex")
+        , ("align-items", "center")
+        , ("justify-content", "center")
+        ]
+    #+ [string "Histogram will appear here"]
+
+  ----------------------------------------
+  -- Snapshot button
+  ----------------------------------------
+  snapshotBtn <- UI.button
+    #+ [string "Take snapshot"]
+    # set UI.style [("margin-top", "20px")]
+
+  ----------------------------------------
+  -- Layout
+  ----------------------------------------
+  controls <- UI.div #+ 
+    [ string "Program: ", element programSelect
+    , UI.br
+    , string "Classical variable: ", element cvarSelect
+    , UI.br
+    , string "Quantum variable: ", element qvarSelect
+    ]
+
+  container <- UI.div #+
+    [ element title
+    , element controls
+    , element histogramBox
+    , element snapshotBtn
+    ]
+    # set UI.style
+        [ ("width", "800px")
+        , ("margin", "30px auto")
+        ]
+
+  getBody window #+ [element container]
+
+  ----------------------------------------
+  -- EVENTS
+  ----------------------------------------
+
+  let updateHistogram = do
+        prog <- get value programSelect
+        cvar <- get value cvarSelect
+        qvar <- get value qvarSelect
+
+        txt <- string ("Program: " ++ prog ++ " | CVar: " ++ cvar ++ " | QVar: " ++ qvar)
+      
+        element histogramBox # set children [txt]
+
+  on UI.selectionChange programSelect $ const updateHistogram
+  on UI.selectionChange cvarSelect    $ const updateHistogram
+  on UI.selectionChange qvarSelect    $ const updateHistogram
+
+  ----------------------------------------
+  -- Snapshot button
+  ----------------------------------------
+  on UI.click snapshotBtn $ \_ -> do
+    liftIO $ putStrLn "Snapshot requested!"
