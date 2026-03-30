@@ -8,12 +8,11 @@ import qualified Graphics.UI.Threepenny as UI
 
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.List
+import qualified Data.Aeson as Aeson
+import qualified Data.Map.Strict as M
 
 import Collect_Samples
 import JSONCodify
-
---main :: IO ()
---main = startGUI defaultConfig setup 
 
 loadCollections :: FilePath -> IO [SampleCollection]
 loadCollections path = do
@@ -27,101 +26,160 @@ loadCollections path = do
         Left err -> error err
 
 getProgramNames :: [SampleCollection] -> [String]
-getProgramNames = map fst
+getProgramNames = map (\(name, _, _) -> name)
 
 getCVariables :: SampleCollection -> [String]
-getCVariables (_, samples) = nub [ var | (_, (stc, _)) <- samples, (var, _) <- stc ]
+getCVariables (_, _, samples) =
+  nub [ var | (_, (stc, _)) <- samples, (var, _) <- stc ]
 
-{-
-NEED TO THINK ABOUT THE INFORMATION REGARDING THE QUANTUM VARIABLES
--}
+extractCVarValues :: String -> SampleCollection -> [Double]
+extractCVarValues varName (_, _, samples) =
+  [ val | (_, (stc, _)) <- samples, (var, val) <- stc, var == varName ]
+
+frequency :: [Double] -> [(Double, Int)]
+frequency xs = M.toList $ M.fromListWith (+) [(x, 1) | x <- xs]
 
 findProgram :: String -> [SampleCollection] -> SampleCollection
-findProgram name = head . filter (\(n, _) -> n == name)
+findProgram name = head . filter (\(n, _, _) -> n == name)
 
+drawBarChart :: String -> [Double] -> UI ()
+drawBarChart varName values = do
+  let freqs  = frequency values
+      xs     = map (show . fst) freqs
+      ys     = map snd freqs
+      xsJson = BL8.unpack (Aeson.encode xs)
+      ysJson = BL8.unpack (Aeson.encode ys)
+
+  runFunction $ ffi
+    "(function () {\
+    \  var plotDiv = document.getElementById('plot');\
+    \  if (!plotDiv) {\
+    \    console.error('plot div not found');\
+    \    return;\
+    \  }\
+    \  plotDiv.innerHTML = 'Rendering chart...';\
+    \  if (!window.Plotly) {\
+    \    console.error('Plotly not loaded');\
+    \    plotDiv.innerHTML = 'Plotly not loaded';\
+    \    return;\
+    \  }\
+    \  var x = JSON.parse(%1);\
+    \  var y = JSON.parse(%2);\
+    \  console.log('x =', x);\
+    \  console.log('y =', y);\
+    \  var data = [{\
+    \    x: x,\
+    \    y: y,\
+    \    type: 'bar',\
+    \    marker: { color: '#4a90e2' }\
+    \  }];\
+    \  var layout = {\
+    \    title: 'Distribution of ' + %3,\
+    \    xaxis: { title: %3, type: 'category' },\
+    \    yaxis: { title: 'Frequency' }\
+    \  };\
+    \  Plotly.newPlot(plotDiv, data, layout);\
+    \})()" xsJson ysJson varName
+
+waitForPlotlyAndDraw :: String -> [Double] -> UI ()
+waitForPlotlyAndDraw varName values = do
+  let freqs  = frequency values
+      xs     = map (show . fst) freqs
+      ys     = map snd freqs
+      xsJson = BL8.unpack (Aeson.encode xs)
+      ysJson = BL8.unpack (Aeson.encode ys)
+
+  runFunction $ ffi
+    "(function () {\
+    \  function renderPlot() {\
+    \    var plotDiv = document.getElementById('plot');\
+    \    if (!plotDiv) {\
+    \      console.error('plot div not found');\
+    \      return;\
+    \    }\
+    \    plotDiv.innerHTML = '';\
+    \    var x = JSON.parse(%1);\
+    \    var y = JSON.parse(%2);\
+    \    var name = %3;\
+    \    var data = [{\
+    \      x: x,\
+    \      y: y,\
+    \      type: 'bar',\
+    \      marker: { color: '#4a90e2' }\
+    \    }];\
+    \    var layout = {\
+    \      title: 'Distribution of ' + name,\
+    \      xaxis: { title: name, type: 'category' },\
+    \      yaxis: { title: 'Frequency' }\
+    \    };\
+    \    Plotly.newPlot(plotDiv, data, layout);\
+    \  }\
+    \  function waitForPlotly() {\
+    \    var plotDiv = document.getElementById('plot');\
+    \    if (window.Plotly) {\
+    \      renderPlot();\
+    \    } else {\
+    \      if (plotDiv) plotDiv.innerHTML = 'Waiting for Plotly...';\
+    \      setTimeout(waitForPlotly, 50);\
+    \    }\
+    \  }\
+    \  waitForPlotly();\
+    \})()" xsJson ysJson varName
+
+    
 setup :: FilePath -> Window -> UI ()
 setup json_file window = do
   return window # set title "Histogram UI"
 
-  ----------------------------------------
-  -- Load data
-  ----------------------------------------
-  collections <- liftIO $ loadCollections json_file
+  headEl <- getHead window
 
+  plotlyScript <- mkElement "script"
+    # set (attr "src") "/static/plotly.min.js"
+    # set (attr "type") "text/javascript"
+
+  element headEl #+ [element plotlyScript]
+
+  collections <- liftIO $ loadCollections json_file
   let programNames = getProgramNames collections
 
-  ----------------------------------------
-  -- Title
-  ----------------------------------------
-  title <- UI.h1 #+ [string "Histogram Viewer"]
-                 # set UI.style [("text-align", "center")]
+  titleEl <- UI.h1
+    #+ [string "Bar Chart Viewer"]
+    # set UI.style [("text-align", "center")]
 
-  ----------------------------------------
-  -- Program dropdown
-  ----------------------------------------
   programSelect <- UI.select
   element programSelect #+ map (\x -> UI.option #+ [string x]) programNames
+  case programNames of
+    (p:_) -> element programSelect # set value p >> return ()
+    []    -> return ()
 
-  ----------------------------------------
-  -- Classical variable dropdown
-  ----------------------------------------
   cvarSelect <- UI.select
-  
-  let varsClassic = case programNames of
-                      [] -> []
-                      (p:_) -> let vars = getCVariables (findProgram p collections)
-                               in vars
-  
-  element cvarSelect #+ map (\x -> UI.option #+ [string x]) varsClassic
-
-  ----------------------------------------
-  -- Update variables when program changes
-  ----------------------------------------
-  on UI.selectionChange programSelect $ \_ -> do
-    prog <- get value programSelect
-
-    let vars = case getCVariables (findProgram prog collections) of
+  let varsClassic =
+        case programNames of
           [] -> ["<None>"]
-          x -> x
+          (p:_) ->
+            case getCVariables (findProgram p collections) of
+              [] -> ["<None>"]
+              xs -> xs
 
-    -- clear old options
-    element cvarSelect # set children []
+  element cvarSelect #+ map (\x -> UI.option #+ [string x]) varsClassic
+  case varsClassic of
+    (v:_) -> element cvarSelect # set value v >> return ()
+    []    -> return ()
 
-    -- add new options
-    element cvarSelect #+
-      map (\v -> UI.option #+ [string v]) vars  
-  
-  ----------------------------------------
-  -- Quantum variable dropdown (placeholder)
-  ----------------------------------------
   qvarSelect <- UI.select
   element qvarSelect #+ map (\x -> UI.option #+ [string x]) ["q1", "q2"]
 
-  ----------------------------------------
-  -- Histogram area
-  ----------------------------------------
-  histogramBox <- UI.div
+  barChartBox <- UI.div
+    # set UI.id_ "plot"
+    # set text "Initializing..."
     # set UI.style
         [ ("border", "2px solid black")
         , ("height", "400px")
         , ("margin-top", "20px")
-        , ("display", "flex")
-        , ("align-items", "center")
-        , ("justify-content", "center")
+        , ("width", "100%")
         ]
-    #+ [string "Histogram will appear here"]
 
-  ----------------------------------------
-  -- Snapshot button
-  ----------------------------------------
-  snapshotBtn <- UI.button
-    #+ [string "Take snapshot"]
-    # set UI.style [("margin-top", "20px")]
-
-  ----------------------------------------
-  -- Layout
-  ----------------------------------------
-  controls <- UI.div #+ 
+  controls <- UI.div #+
     [ string "Program: ", element programSelect
     , UI.br
     , string "Classical variable: ", element cvarSelect
@@ -130,10 +188,9 @@ setup json_file window = do
     ]
 
   container <- UI.div #+
-    [ element title
+    [ element titleEl
     , element controls
-    , element histogramBox
-    , element snapshotBtn
+    , element barChartBox
     ]
     # set UI.style
         [ ("width", "800px")
@@ -142,25 +199,31 @@ setup json_file window = do
 
   getBody window #+ [element container]
 
-  ----------------------------------------
-  -- EVENTS
-  ----------------------------------------
-
-  let updateHistogram = do
+  let updateBarChart = do
         prog <- get value programSelect
         cvar <- get value cvarSelect
-        qvar <- get value qvarSelect
+        let sc = findProgram prog collections
+        if cvar == "<None>"
+          then waitForPlotlyAndDraw "" []
+          else waitForPlotlyAndDraw cvar (extractCVarValues cvar sc)
 
-        txt <- string ("Program: " ++ prog ++ " | CVar: " ++ cvar ++ " | QVar: " ++ qvar)
-      
-        element histogramBox # set children [txt]
+  on UI.selectionChange programSelect $ \_ -> do
+    prog <- get value programSelect
+    let vars =
+          case getCVariables (findProgram prog collections) of
+            [] -> ["<None>"]
+            xs -> xs
 
-  on UI.selectionChange programSelect $ const updateHistogram
-  on UI.selectionChange cvarSelect    $ const updateHistogram
-  on UI.selectionChange qvarSelect    $ const updateHistogram
+    element cvarSelect # set children []
+    element cvarSelect #+ map (\v -> UI.option #+ [string v]) vars
 
-  ----------------------------------------
-  -- Snapshot button
-  ----------------------------------------
-  on UI.click snapshotBtn $ \_ -> do
-    liftIO $ putStrLn "Snapshot requested!"
+    case vars of
+      (v:_) -> element cvarSelect # set value v >> return ()
+      []    -> return ()
+
+    updateBarChart
+
+  on UI.selectionChange cvarSelect $ const updateBarChart
+  on UI.selectionChange qvarSelect $ const updateBarChart
+
+  updateBarChart

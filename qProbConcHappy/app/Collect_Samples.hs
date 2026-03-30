@@ -33,7 +33,7 @@ type ProgInfoFile = ((String, Int, Int), (C,StC,L,StQ))
 type ListProgInfoFile = [ProgInfoFile]
 
 --(ProgramName,[(SampleNumber, (StC, StQ))])
-type SampleCollection = (String, [(Int, (StC, StQ))])
+type SampleCollection = (String, L, [(Int, Mem)])
 type ListSampleCollection = [SampleCollection]
 
 
@@ -50,15 +50,15 @@ collectListSamples (h:t) sch = do
 
 -- -- ProgInfoFile  -> Sch -> SampleCollection
 collectSamples :: ProgInfoFile -> Sch -> IO SampleCollection
-collectSamples ((name, 0, k),(c, sc, l, sq)) sch = return (name, [])
+collectSamples ((name, 0, k),(c, sc, l, sq)) sch = return (name, l, [])
 collectSamples ((name, n_samples, k),(c, sc, l, sq)) sch = do
   maybe_st <- sampleMem (c, (sc,l,sq), k) sch -- Maybe (Mem,Double)
-  (_, samples) <- collectSamples ((name, n_samples-1, k),(c, sc, l, sq)) sch
+  (_, _, samples) <- collectSamples ((name, n_samples-1, k),(c, sc, l, sq)) sch
   if maybe_st == Nothing
-    then return (name, samples)
+    then return (name, l, samples)
     else do
-    let (sc,sq) = fromJust maybe_st
-    return (name, (n_samples, (sc, limitPrecisionS 5 sq)): samples)
+    let (sc', sq') = fromJust maybe_st
+    return (name, l, (n_samples, (sc', limitPrecisionS 5 sq')): samples)
 
 
 --nstep where after a small-step a configuration is chosen to be executed next
@@ -73,7 +73,7 @@ sampleMem (c, s, k) sch = do
   return $ Just st
 
 showCollectSamples :: SampleCollection -> String
-showCollectSamples (name_prog, samples) = name_prog ++ ":\n " ++ showSamples samples ++ "\n "
+showCollectSamples (name_prog, l, samples) = name_prog ++ ":\n " ++ show(l) ++ "\n " ++ showSamples samples ++ "\n "
 
 showSamples :: [(Int, (StC, StQ))] -> String
 showSamples [] = ""
@@ -87,15 +87,15 @@ testCollectSamples str_c str_sc str_sq sch n_samples k = do
       c = testC str_c
       sc = testStC str_sc
       (l,sq) = testStQ str_sq
-  (_, lres) <- collectSamples ((prog_name, n_samples, k),(c,sc,l,sq)) sch
-  putStrLn $ prog_name ++ "\n " ++ (showSamples lres)
+  (_, _, lres) <- collectSamples ((prog_name, n_samples, k),(c,sc,l,sq)) sch
+  putStrLn $ prog_name ++ "\n " ++ show(l) ++ "\n  " ++ (showSamples lres)
 
 testsampling :: String -> String -> String -> Sch -> Int -> IO (Maybe Mem)
 testsampling str_c str_stc str_lstq sch k = do
   let c = testC str_c
       sc = testStC str_stc
       (l,sq) = testStQ str_lstq
-  sampleMem (c, (sc, l, sq), k) sch 
+  sampleMem (c, (sc, l, sq), k) sch
 
 prettyTesting :: String -> String -> String -> Sch -> Int -> IO ()
 prettyTesting str_c str_stc str_lstq sch k = do

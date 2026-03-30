@@ -62,7 +62,8 @@ extra-source-files: app/Beautify.hs,
                     app/User_Gates.hs,
                     app/Collect_Samples.hs,
                     app/JSONCodify.hs,
-                    app/GUI.hs
+                    app/GUI.hs,
+                    app/static/plotly.min.js
 
 common warnings
     --ghc-options: -Wall
@@ -110,7 +111,8 @@ executable qProbConcHappy
                       threepenny-gui,
                       bytestring,
                       directory,
-                      filepath
+                      filepath,
+                      containers
 
     build-tool-depends: happy:happy
 

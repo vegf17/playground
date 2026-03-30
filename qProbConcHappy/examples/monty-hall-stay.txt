@@ -1,4 +1,5 @@
 ---MontyHallNotChange---
+hist: 100
 k: 100
 cs: [(prize,0),(cont,0),(openCurtain,0),(change,0),(won,0)]
 

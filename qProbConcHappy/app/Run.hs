@@ -68,8 +68,12 @@ runHist path sch = do
   resetJsonFile json_file
   fileContent <- readFile path
   let configs = testFile fileContent
+      config_GUI = defaultConfig
+        {
+          jsStatic = Just "app/static"
+        }
   runHistAux configs sch json_file
-  startGUI defaultConfig (setup json_file)
+  startGUI config_GUI (setup json_file)
 
 runHistAux :: ListProgInfoFile -> Sch -> FilePath -> IO ()
 runHistAux [] _ _ = return ()

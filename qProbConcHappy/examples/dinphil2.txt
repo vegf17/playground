@@ -1,4 +1,5 @@
 ---DinPhil2---
+hist: 1
 k: 500
 cs: [(st1,1),(st2,1),(cs1,1),(cs2,1),(eat1,0),(eat2,0)]
 

@@ -22,10 +22,9 @@ import Collect_Samples
 
 
 testJSONEncoding :: SampleCollection -> IO()
-testJSONEncoding (name, samples) = do
-  let json = encodeSampleCollection (name, samples)
+testJSONEncoding (name, l, samples) = do
+  let json = encodeSampleCollection (name, l, samples)
   BL.putStr json
-
 
 --------------------------------------------------------------------------------
 -- Auxiliary JSON representations
@@ -67,19 +66,20 @@ matrixFromJSON v = do
 --------------------------------------------------------------------------------
 
 encodeSampleCollection :: SampleCollection -> BL.ByteString
-encodeSampleCollection (programName, samples) =
+encodeSampleCollection (programName, l, samples) =
   Aeson.encode $
     object
-      [ "programName" .= programName
-      , "samples" .= map encodeSample samples
+      [ "1-programName" .= programName,
+        "2-linkingFunction" .= l,
+        "3-samples" .= map encodeSample samples
       ]
   where
     encodeSample :: (Int, (StC, StQ)) -> Value
     encodeSample (n, (stc, stq)) =
       object
-        [ "sampleId" .= n
-        , "stc" .= stc
-        , "stq" .= matrixToJSON stq
+        [ "sampleId" .= n,
+          "stc" .= stc,
+          "stq" .= matrixToJSON stq
         ]
 
 --------------------------------------------------------------------------------
@@ -93,10 +93,11 @@ decodeSampleCollection bs =
 parseSampleCollectionValue :: Value -> Parser SampleCollection
 parseSampleCollectionValue =
   withObject "SampleCollection" $ \o -> do
-    programName <- o .: "programName"
-    sampleVals  <- o .: "samples"
+    programName <- o .: "1-programName"
+    l <- o .: "2-linkingFunction"
+    sampleVals  <- o .: "3-samples"
     samples     <- traverse parseSample sampleVals
-    pure (programName, samples)
+    pure (programName, l, samples)
   where
     parseSample :: Value -> Parser (Int, (StC, StQ))
     parseSample =

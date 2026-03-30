@@ -1,4 +1,5 @@
 ---MontyHall---
+hist: 100
 k: 250
 cs: [(prize,0),(cont,0),(openCurtain,0),(change,0),(won,0)]
 
