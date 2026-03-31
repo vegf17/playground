@@ -1,4 +1,4 @@
-Folders
+## Folders
 * happy (Haskell)
   * C ::= skip | x:=e | C;C | if b then C else C | while b do C 
   * Grammar built with Happy, which automatically generates a parser
@@ -8,3 +8,9 @@ Folders
 * qProbConcHappy
   * PhD tool reformulated with a Happy grammar and parser
   * Rebuild histograms (to do)       
+
+* pennylane
+  * Content following the introduction to pennylane (https://pennylane.ai/codebook/learning-paths)
+
+* qrisp
+  * Content regarding IQM Winter School 2025 
