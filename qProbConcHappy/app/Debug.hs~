@@ -1,0 +1,7 @@
+module Debug where
+
+{-
+This module has the goal to "debug", i.e. to give a trace of the states occurred during the computation
+We do this resorting to the history of the computation, that the scheduler uses and produces
+-}
+

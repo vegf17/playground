@@ -12,6 +12,7 @@ import Com
 import Collect_Samples
 import JSONCodify
 import GUI
+import Debug
 
 import System.Exit
 import Data.List
@@ -84,3 +85,20 @@ runHistAux (h:t) sch json_file = do
   runHistAux t sch json_file -- [(String, [(Int, (StC, StQ))])]
   
   
+--Receives a filename and produces the debugger
+-- runDebug :: String -> Sch -> IO()
+-- runDebug path sch = do
+--   fileContent <- readFile path
+--   let configs = testFile fileContent
+--   runDebugAux configs sch
+    
+
+-- runDebugAux ::  [((String, Int, Int), (C,StC,L,StQ))] -> Sch -> IO()
+-- runDebugAux [] _ = return ()
+-- runDebugAux (((name, rep, k),(c,sc,l,sq)):t) sch = do
+--   let result = runDebugSch sch c (sc, l, sq) k
+--   putStrLn $ show (length result)
+--   putStrLn $ show result
+--   --putStrLn $ showRun (name, result)
+--   runDebugAux t sch
+

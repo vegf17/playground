@@ -63,6 +63,7 @@ extra-source-files: app/Beautify.hs,
                     app/Collect_Samples.hs,
                     app/JSONCodify.hs,
                     app/GUI.hs,
+                    app/Debug.hs,
                     app/static/plotly.min.js
 
 common warnings
@@ -90,7 +91,8 @@ executable qProbConcHappy
                    User_Gates,
                    Collect_Samples,
                    JSONCodify,
-                   GUI
+                   GUI,
+                   Debug
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
