@@ -2,7 +2,7 @@
 hist: 10
 k: 10
 cs: 1
-qs: 1
+qs: 2
 
 H(q0); Meas(c0,q0)
 ---QtCoinTossConc---
@@ -11,7 +11,7 @@ H(q0); Meas(c0,q0)
 ---ProbCommand---
 hist: 10
 k: 1
-cs: 1
+cs: 2
 
 c0:=10 (+)(1%2) c0:=1;skip
 ---ProbCommand---

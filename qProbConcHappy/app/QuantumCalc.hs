@@ -758,8 +758,6 @@ test_apply3qbitgate g nums = map (\s -> apply3QbitGate g nums s) states
         states = [tensorProduct [i,j,k,l] | i <- [st0,st1], j <- [st0,st1], k <- [st0,st1], l<-[st0,st1]]
         --states = [tensorProduct [i,j,k] | i <- [st0,st1], j <- [st0,st1], k <- [st0,st1]]
 
-
-
 test_applyNqbitgate :: Op -> [Int] -> [String]
 test_applyNqbitgate g nums = map vectToKetComplex (map (\s -> applyNQbitGate g nums s) states)
   where st0 = fromLists [[1],[0]]
