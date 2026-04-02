@@ -74,10 +74,11 @@ encodeSampleCollection (programName, l, samples) =
         "3-samples" .= map encodeSample samples
       ]
   where
-    encodeSample :: (Int, (StC, StQ)) -> Value
-    encodeSample (n, (stc, stq)) =
+    encodeSample :: (Int, Bool, (StC, StQ)) -> Value
+    encodeSample (n, b, (stc, stq)) =
       object
         [ "sampleId" .= n,
+          "bool" .= b,
           "stc" .= stc,
           "stq" .= matrixToJSON stq
         ]
@@ -99,14 +100,15 @@ parseSampleCollectionValue =
     samples     <- traverse parseSample sampleVals
     pure (programName, l, samples)
   where
-    parseSample :: Value -> Parser (Int, (StC, StQ))
+    parseSample :: Value -> Parser (Int, Bool, (StC, StQ))
     parseSample =
       withObject "sample entry" $ \o -> do
         n   <- o .: "sampleId"
+        b <- o .: "bool"
         stc <- o .: "stc"
         stqVal <- o .: "stq"
         stq <- matrixFromJSON stqVal
-        pure (n, (stc, stq))
+        pure (n, b, (stc, stq))
 
 
 prepareJsonFile :: FilePath -> IO (FilePath)

@@ -1,4 +1,5 @@
 ---SimpleQtDinPhil---
+hist: 100 
 k: 200
 cs: [x1,x2,eat1,eat2,fst]
 qs: [q1,q2,q3,q4,q5,q6]
