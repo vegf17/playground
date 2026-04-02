@@ -55,6 +55,8 @@ extractQSt qvars sample_collection = let (l, list_qst) = getQSt sample_collectio
 
 
 -- get the reduced density operator for given quantum variables
+-- here, we need to select the quantum variables not in QVarList (recall that the reduced density
+-- matrix applies the trace operator for the variables that we are not interested in)
 getQStQVars :: QVarList -> SampleCollection -> [StQ]
 getQStQVars list_qvars sample_collection =
   let (l, list_qst) = getQSt sample_collection
@@ -80,6 +82,48 @@ frequency xs = M.toList $ M.fromListWith (+) [(x, 1) | x <- xs]
 
 findProgram :: String -> [SampleCollection] -> SampleCollection
 findProgram name = head . filter (\(n, _, _) -> n == name)
+
+
+parseVarInput :: String -> [String]
+parseVarInput s =
+  let trim = f . f
+        where f = reverse . dropWhile (`elem` [' ', '\t', '\n', '\r'])
+  in filter (/= "") $ map trim $ splitByComma s
+
+splitByComma :: String -> [String]
+splitByComma [] = [""]
+splitByComma (',':xs) = "" : splitByComma xs
+splitByComma (x:xs) =
+  case splitByComma xs of
+    []     -> [[x]]
+    (y:ys) -> (x:y) : ys
+
+extractCVarTupleValues :: [String] -> SampleCollection -> [String]
+extractCVarTupleValues varNames (_, _, samples) =
+  map sampleToLabel samples
+  where
+    sampleToLabel (_, (stc, _)) =
+      unwords [show val | var <- varNames, val <- getVals var stc]
+
+    getVals v stc = [x | (name, x) <- stc, name == v]
+
+extractQVarTupleValues :: [String] -> SampleCollection -> [String]
+extractQVarTupleValues qvarNames sample_collection =
+  map qStToString (getQStQVars qvarNames sample_collection)
+
+allIn :: Eq a => [a] -> [a] -> Bool
+allIn xs ys = all (`elem` ys) xs
+
+
+setPlotMessage :: String -> UI ()
+setPlotMessage msg =
+  runFunction $ ffi
+    "(function () {\
+    \  var plotDiv = document.getElementById('plot');\
+    \  if (plotDiv) {\
+    \    plotDiv.innerHTML = %1;\
+    \  }\
+    \})()" msg
 
 drawBarChart :: String -> [Double] -> UI ()
 drawBarChart varName values = do
@@ -165,7 +209,6 @@ waitForPlotlyAndDraw varName values = do
     \  waitForPlotly();\
     \})()" xsJson ysJson varName
 
-
 setup :: FilePath -> Window -> UI ()
 setup json_file window = do
   return window # set title "Histogram UI"
@@ -208,15 +251,10 @@ setup json_file window = do
 
   let varsClassic =
         case programNames of
-          [] -> ["<None>"]
-          (p:_) ->
-            let xs = getCVariables (findProgram p collections)
-            in "<None>" : xs
+          [] -> []
+          (p:_) -> getCVariables (findProgram p collections)
 
   element cvarSelect #+ map (\x -> UI.option #+ [string x]) varsClassic
-  case varsClassic of
-    (v:_) -> element cvarSelect # set value v >> return ()
-    []    -> return ()
 
   qvarSelect <- UI.select
     # set (attr "size") "5"
@@ -228,15 +266,10 @@ setup json_file window = do
 
   let varsQuantum =
         case programNames of
-          [] -> ["<None>"]
-          (p:_) ->
-            let xs = getQVariables (findProgram p collections)
-            in "<None>" : xs
+          [] -> []
+          (p:_) -> getQVariables (findProgram p collections)
 
   element qvarSelect #+ map (\x -> UI.option #+ [string x]) varsQuantum
-  case varsQuantum of
-    (q:_) -> element qvarSelect # set value q >> return ()
-    []    -> return ()
 
   barChartBox <- UI.div
     # set UI.id_ "plot"
@@ -246,6 +279,38 @@ setup json_file window = do
         , ("height", "400px")
         , ("width", "100%")
         ]
+
+  inputLabel <- UI.div
+    #+ [string "Variables for chart (comma-separated):"]
+    # set UI.style
+        [ ("margin-top", "16px")
+        , ("margin-bottom", "8px")
+        , ("font-weight", "bold")
+        ]
+
+  varsInput <- UI.input
+    # set (attr "type") "text"
+    # set (attr "placeholder") "Examples: x   |   x, y   |   q1   |   q1, q2"
+    # set UI.style
+        [ ("width", "100%")
+        , ("padding", "8px")
+        , ("font-size", "14px")
+        , ("box-sizing", "border-box")
+        ]
+
+  drawButton <- UI.button
+    #+ [string "Draw bar chart"]
+    # set UI.style
+        [ ("margin-top", "10px")
+        , ("padding", "8px 14px")
+        , ("cursor", "pointer")
+        ]
+
+  inputPanel <- UI.div #+
+    [ element inputLabel
+    , element varsInput
+    , element drawButton
+    ]
 
   programPanel <- UI.div #+
     [ UI.div #+
@@ -284,7 +349,9 @@ setup json_file window = do
         ]
 
   chartArea <- UI.div #+
-    [ element barChartBox ]
+    [ element barChartBox
+    , element inputPanel
+    ]
     # set UI.style
         [ ("flex-grow", "1") ]
 
@@ -310,92 +377,43 @@ setup json_file window = do
 
   let updateBarChart = do
         prog <- get value programSelect
-        cvar <- get value cvarSelect
-        qvar <- get value qvarSelect
-        let sc = findProgram prog collections
+        rawInput <- get value varsInput
+        let sc         = findProgram prog collections
+            typedVars  = parseVarInput rawInput
+            cvars      = getCVariables sc
+            qvars      = getQVariables sc
 
-        if qvar /= "<None>"
-          then waitForPlotlyAndDraw qvar (extractQVarValues qvar sc)
-          else if cvar /= "<None>"
-            then waitForPlotlyAndDraw cvar (map show (extractCVarValues cvar sc))
-            else waitForPlotlyAndDraw "" []
+        if null typedVars
+          then setPlotMessage "Please type one or more variables."
+          else if allIn typedVars cvars
+            then do
+              let labels = extractCVarTupleValues typedVars sc
+              waitForPlotlyAndDraw (unwords typedVars) labels
+          else if allIn typedVars qvars
+            then do
+              let labels = extractQVarTupleValues typedVars sc
+              waitForPlotlyAndDraw (unwords typedVars) labels
+          else if any (`elem` cvars) typedVars && any (`elem` qvars) typedVars
+            then setPlotMessage "Mixed classical and quantum variables are not allowed."
+          else setPlotMessage "Some variables are invalid for the selected program."
 
   on UI.selectionChange programSelect $ \_ -> do
     prog <- get value programSelect
     let sc = findProgram prog collections
 
-    let cvars = "<None>" : getCVariables sc
+    let cvars = getCVariables sc
     element cvarSelect # set children []
     element cvarSelect #+ map (\v -> UI.option #+ [string v]) cvars
-    case cvars of
-      (v:_) -> element cvarSelect # set value v >> return ()
-      []    -> return ()
 
-    let qvars = "<None>" : getQVariables sc
+    let qvars = getQVariables sc
     element qvarSelect # set children []
     element qvarSelect #+ map (\q -> UI.option #+ [string q]) qvars
-    case qvars of
-      (q:_) -> element qvarSelect # set value q >> return ()
-      []    -> return ()
 
-    updateBarChart
+    setPlotMessage "Program changed. Type variables below the chart and click 'Draw bar chart'."
 
-  on UI.selectionChange cvarSelect $ \_ -> do
-    element qvarSelect # set value "<None>"
-    updateBarChart
+  on UI.click drawButton $ \_ -> updateBarChart
 
-  on UI.selectionChange qvarSelect $ \_ -> do
-    element cvarSelect # set value "<None>"
-    updateBarChart
-
-  updateBarChart
-
--- waitForPlotlyAndDraw :: String -> [Double] -> UI ()
--- waitForPlotlyAndDraw varName values = do
---   let freqs  = frequency values
---       xs     = map (show . fst) freqs
---       ys     = map snd freqs
---       xsJson = BL8.unpack (Aeson.encode xs)
---       ysJson = BL8.unpack (Aeson.encode ys)
-
---   runFunction $ ffi
---     "(function () {\
---     \  function renderPlot() {\
---     \    var plotDiv = document.getElementById('plot');\
---     \    if (!plotDiv) {\
---     \      console.error('plot div not found');\
---     \      return;\
---     \    }\
---     \    plotDiv.innerHTML = '';\
---     \    var x = JSON.parse(%1);\
---     \    var y = JSON.parse(%2);\
---     \    var name = %3;\
---     \    var data = [{\
---     \      x: x,\
---     \      y: y,\
---     \      type: 'bar',\
---     \      marker: { color: '#4a90e2' }\
---     \    }];\
---     \    var layout = {\
---     \      title: 'Distribution of ' + name,\
---     \      xaxis: { title: name, type: 'category' },\
---     \      yaxis: { title: 'Frequency' }\
---     \    };\
---     \    Plotly.newPlot(plotDiv, data, layout);\
---     \  }\
---     \  function waitForPlotly() {\
---     \    var plotDiv = document.getElementById('plot');\
---     \    if (window.Plotly) {\
---     \      renderPlot();\
---     \    } else {\
---     \      if (plotDiv) plotDiv.innerHTML = 'Waiting for Plotly...';\
---     \      setTimeout(waitForPlotly, 50);\
---     \    }\
---     \  }\
---     \  waitForPlotly();\
---     \})()" xsJson ysJson varName
-
-
+  setPlotMessage "Type variables below the chart and click 'Draw bar chart'."
 
 -- setup :: FilePath -> Window -> UI ()
 -- setup json_file window = do
@@ -441,9 +459,8 @@ setup json_file window = do
 --         case programNames of
 --           [] -> ["<None>"]
 --           (p:_) ->
---             case getCVariables (findProgram p collections) of
---               [] -> ["<None>"]
---               xs -> xs
+--             let xs = getCVariables (findProgram p collections)
+--             in "<None>" : xs
 
 --   element cvarSelect #+ map (\x -> UI.option #+ [string x]) varsClassic
 --   case varsClassic of
@@ -462,9 +479,8 @@ setup json_file window = do
 --         case programNames of
 --           [] -> ["<None>"]
 --           (p:_) ->
---             case getQVariables (findProgram p collections) of
---               [] -> ["<None>"]
---               xs -> xs
+--             let xs = getQVariables (findProgram p collections)
+--             in "<None>" : xs
 
 --   element qvarSelect #+ map (\x -> UI.option #+ [string x]) varsQuantum
 --   case varsQuantum of
@@ -546,32 +562,42 @@ setup json_file window = do
 --         cvar <- get value cvarSelect
 --         qvar <- get value qvarSelect
 --         let sc = findProgram prog collections
---         if cvar == "<None>"
---           then waitForPlotlyAndDraw "" []
---           else waitForPlotlyAndDraw cvar (extractCVarValues cvar sc)
+
+--         if qvar /= "<None>"
+--           then waitForPlotlyAndDraw qvar (extractQVarValues qvar sc)
+--           else if cvar /= "<None>"
+--             then waitForPlotlyAndDraw cvar (map show (extractCVarValues cvar sc))
+--             else waitForPlotlyAndDraw "" []
 
 --   on UI.selectionChange programSelect $ \_ -> do
 --     prog <- get value programSelect
+--     let sc = findProgram prog collections
 
---     let vars =
---           case getCVariables (findProgram prog collections) of
---             [] -> ["<None>"]
---             xs -> xs
-
+--     let cvars = "<None>" : getCVariables sc
 --     element cvarSelect # set children []
---     element cvarSelect #+ map (\v -> UI.option #+ [string v]) vars
-
---     case vars of
+--     element cvarSelect #+ map (\v -> UI.option #+ [string v]) cvars
+--     case cvars of
 --       (v:_) -> element cvarSelect # set value v >> return ()
+--       []    -> return ()
+
+--     let qvars = "<None>" : getQVariables sc
+--     element qvarSelect # set children []
+--     element qvarSelect #+ map (\q -> UI.option #+ [string q]) qvars
+--     case qvars of
+--       (q:_) -> element qvarSelect # set value q >> return ()
 --       []    -> return ()
 
 --     updateBarChart
 
---   on UI.selectionChange cvarSelect $ const updateBarChart
---   on UI.selectionChange qvarSelect $ const updateBarChart
+--   on UI.selectionChange cvarSelect $ \_ -> do
+--     element qvarSelect # set value "<None>"
+--     updateBarChart
+
+--   on UI.selectionChange qvarSelect $ \_ -> do
+--     element cvarSelect # set value "<None>"
+--     updateBarChart
 
 --   updateBarChart
-
 
 
 -- Work for the partial trace ---
