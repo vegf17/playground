@@ -32,19 +32,24 @@ import Beautify
 import KStep
 --my imports--
 
+data Trace = undefined
 
--- runDebugSch :: Sch -> C -> LMem -> Int -> [(ProbPath, [(Mem, Double)])]
+
+-- runDebugSch :: Sch -> C -> LMem -> Int -> [(Mem, Double)]
 -- runDebugSch sch c lmem k = let result = debugSch (sch,([],(c,lmem)),k)
 --                            in map (\(prob_path, lmem) -> (prob_path, cleanL $ getDist lmem) ) result
 --   where cleanL = map (\((sc,l,sq),p) -> ((sc,sq),p))
 
-debugSch :: (Sch, ProbPath, Int) -> [Dist LMem]
-debugSch (_, path, 0) = [Dist [(snd $ snd path, 0)]]   -- or whatever base case makes sense
-debugSch (sch, l@(path, (c, s)), k) =
-  case sch l of
+traceSch :: (Sch, ProbPath, Int) -> (ProbPath, Dist LMem)
+traceSch (_, path, 0) = Dist (path, [(snd $ snd path, 0)])   -- or whatever base case makes sense
+traceSch (sch, l@(path, (c, s)), k) =
+  case (sch l) of
     Nothing -> error "Scheduler undefined"
-    Just convDist ->
-      let ppL = [(s', p*q) | (dist, q) <- convDist, (s', p)   <- projL dist]
-          next_eval = [((sch, (path ++ [((c, s), dist)], cs), k-1), p*q) | (dist, q) <- convDist, (cs, p)   <- projR dist]
-          trans_step = concatMap (\(st, _) -> debugSch st) next_eval
-      in trans_step
+    Just convDist -> do 
+      let ppL = [ [ (s, p*q) | (s, p) <- (projL dist)] | (dist, q) <- convDist] -- [([(S, Double)], Double)]
+          next_eval = [[((sch, (path ++ [((c, s), dist)], cs), k-1), p*q) | (cs, p) <- (projR dist)] | (dist, q) <- convDist]
+          transStep = (Dist $ concat next_eval) >>= kStepSch
+      addDist transStep (Dist $ concat ppL)
+
+
+

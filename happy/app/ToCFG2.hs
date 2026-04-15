@@ -104,7 +104,7 @@ showCFGNot xs = intercalate "\n\t   " (map showCFGNotAux xs)
 showCFGNotAux :: CFGNot -> String
 showCFGNotAux SSkip       = "skip"
 showCFGNotAux (SAsg x e)  = x ++ ":=" ++ show e
-showCFGNotAux (Phi x lvar) = x ++ "phi" ++ show(lvar)
+showCFGNotAux (Phi x lvar) = x ++ "=phi" ++ show(lvar)
 showCFGNotAux (BE b) = show b
 
 showEdge :: (NodeId, EdgeLabel, NodeId) -> String
