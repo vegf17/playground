@@ -23,8 +23,7 @@ toOpenQASM3 g eds = do
   let trav = traverseG g eds 0
       vars = collectVars g eds
   putStrLn $ declareVars vars
-  putStrLn $ printG g eds trav vars  
-  
+  putStrLn $ printG 0 g eds trav vars  
 
 -- declare variables
 declareVars :: [(QVar, CVar)] -> String
@@ -42,30 +41,38 @@ printCVars (h:t) = if h==""
                    then printCVars t
                    else "bit " ++ h ++ ";\n" ++ printCVars t
 
---Given the traversal of a graph, print its OpenQASM3 instructions
-printG :: Graph -> Edges -> [NodeId] -> [(QVar, CVar)] -> String
-printG _ _ [] _ = ""
-printG g eds (h:t) vars = let node = getNode g h
-                              (str, trav) = fromNode g eds node t vars
-                          in str ++ printG g eds trav vars
+--Given the traversal of a graph, print its OpenQASM3 instructions (prettier ChatGPT)
+printG :: Int -> Graph -> Edges -> [NodeId] -> [(QVar, CVar)] -> String
+printG _ _ _ [] _ = ""
+printG n g eds (h:t) vars =
+  let node = getNode g h
+      (str, trav) = fromNode n g eds node t vars
+  in str ++ printG n g eds trav vars
 
+-- g -> eds -> node -> traverse_order -> q_c_vars -> (openqasm3 text, updated_traverse_order) (prettier ChatGPT)
+fromNode :: Int -> Graph -> Edges -> Node -> [NodeId] -> [(QVar, CVar)] -> (String, [NodeId])
+fromNode n g eds (Block _ list_cfg) trav vars =
+  (fromListCFGNot n 2 list_cfg vars, trav)
+fromNode n g eds (MeasBlock nid list_cfg) next_trav vars =
+  let init_text = fromListCFGNot n 0 list_cfg vars
+      (true_trav, false_trav) = measTrav g eds nid
+      then_text = printG (n + 1) g eds true_trav vars ++ line n "}"
+      else_text = line n "else {" ++ printG (n + 1) g eds false_trav vars ++ line n "}"
+      upd_trav = filter (`notElem` (true_trav ++ false_trav)) next_trav
+  in (init_text ++ then_text ++ else_text, upd_trav)
+fromNode n g eds (WhlBlock nid list_cfg) next_trav vars =
+  let init_text = fromListCFGNot n 1 list_cfg vars
+      true_trav = whlTrav g eds nid
+      body_text = printG (n + 1) g eds true_trav vars
+      end_text = fromListCFGNot (n + 1) (-1) list_cfg vars ++ line n "}"
+      upd_trav = filter (`notElem` true_trav) next_trav
+  in (init_text ++ body_text ++ end_text, upd_trav)
 
--- from Node to OpenQASM3
--- g -> eds -> node -> traverse_order -> q_c_vars -> (openqasm3 text, updated_traverse_order)
-fromNode :: Graph -> Edges -> Node -> [NodeId] -> [(QVar, CVar)] -> (String, [NodeId])
-fromNode g eds (Block nid list_cfg) trav vars = (fromListCFGNot 2 list_cfg vars, trav)
-fromNode g eds (MeasBlock nid list_cfg) next_trav vars = let init_text = fromListCFGNot 0 list_cfg vars
-                                                             (true_trav, false_trav) = measTrav g eds nid
-                                                             then_text =  "  " ++ printG g eds true_trav vars ++ "}\n"
-                                                             else_text = "else{\n  " ++ printG g eds false_trav vars ++ "}\n"
-                                                             upd_trav = filter (`notElem` (true_trav++false_trav)) next_trav
-                                                         in (init_text ++ then_text ++ else_text, upd_trav)
-fromNode g eds (WhlBlock nid list_cfg) next_trav vars = let init_text = fromListCFGNot 1 list_cfg vars 
-                                                            true_trav = whlTrav g eds nid
-                                                            do_text = "  " ++ printG g eds true_trav vars 
-                                                            end_text = (fromListCFGNot (-1) list_cfg vars) ++ "}\n"
-                                                            upd_trav = filter (`notElem` true_trav) next_trav
-                                                        in (init_text ++ do_text ++ end_text, upd_trav)
+indent :: Int -> String
+indent n = replicate (2 * n) ' '
+
+line :: Int -> String -> String
+line n s = indent n ++ s ++ "\n"
 
 whlTrav :: Graph -> Edges -> NodeId -> [NodeId]
 whlTrav g eds nid =
@@ -140,28 +147,28 @@ existsPath eds n_start n_finish visited_nid =
       res = or $ concat $ map (\n -> if elem n visited_nid then [] else [existsPath eds n n_finish (n:visited_nid)]) next_n_start
   in res_next || res
 
+
 -- from a list of CFGNot to a sequence of OpenQASM3 instructions
--- if_or_whl: 0 -> if; 1 -> while; 2 -> block
-fromListCFGNot :: Int -> [CFGNot] -> [(QVar, CVar)] -> String
-fromListCFGNot _ [] _ = ""
-fromListCFGNot if_or_whl (h:t) vars = case h of
-  SSkip -> "nop;\n" ++ fromListCFGNot if_or_whl t vars
-  otherwise -> fromCFGNot if_or_whl h vars ++ "\n" ++ fromListCFGNot if_or_whl t vars
+-- if_or_whl: 0 -> if; 1 -> init while; -1 -> end while; 2 -> block
+fromListCFGNot :: Int -> Int -> [CFGNot] -> [(QVar, CVar)] -> String
+fromListCFGNot _ _ [] _ = ""
+fromListCFGNot n if_or_whl (h:t) vars =
+  case h of
+    SSkip -> line n "nop;" ++ fromListCFGNot n if_or_whl t vars
+    _ -> line n (fromCFGNot if_or_whl h vars) ++ fromListCFGNot n if_or_whl t vars
 
 -- from CFGNot to OpenQASM3
 fromCFGNot :: Int -> CFGNot -> [(QVar, CVar)] -> String
---fromCFGNot SSkip = ""
-fromCFGNot _ (UU g qvars) _ = let g_opq3 = gatesToOpenQASM3 g
-                                  qvars_opq3 = qvarsToString qvars
-                              in g_opq3 ++ qvars_opq3 ++ ";"
-fromCFGNot if_or_whl (MeasQ qvar) vars = let cvar = findCVar qvar vars 
-                                             meas = cvar ++ " = measure " ++ qvar ++ ";\n"
-                                             if_text = "if (" ++ cvar ++ "==1){"
-                                             whl_text = "while (" ++ cvar ++ "==1){"
-                                         in case if_or_whl of
-                                              0 -> meas ++ if_text
-                                              1 -> meas ++ whl_text
-                                              -1 -> takeWhile (\e -> e /= '\n') meas
+fromCFGNot _ (UU g qvars) _ = gatesToOpenQASM3 g ++ qvarsToString qvars ++ ";"
+fromCFGNot if_or_whl (MeasQ qvar) vars =
+  let cvar = findCVar qvar vars
+      meas = cvar ++ " = measure " ++ qvar ++ ";"
+  in case if_or_whl of
+       0  -> meas ++ "\n" ++ "if (" ++ cvar ++ " == 1) {"
+       1  -> meas ++ "\n" ++ "while (" ++ cvar ++ " == 1) {"
+       -1 -> meas
+       _  -> error "fromCFGNot: invalid context for measurement"
+       
 
 findCVar :: QVar -> [(QVar, CVar)] -> CVar
 findCVar q [] = error ("findCVar: the classical variable associated to qubit " ++ q ++ " was not found")
@@ -460,3 +467,53 @@ nidPathBFS eds start target = go [[start]] []
 --                                                              rmv_path = true_path++false_path
 --                                                              upd_trav = filter (`notElem` rmv_path) next_trav
 --                                                          in (init_text ++ then_text ++ else_text, (true_path,false_path), upd_trav)
+
+
+--- functions before ChatGPT print prettier outputs
+-- --Given the traversal of a graph, print its OpenQASM3 instructions
+-- printG :: Graph -> Edges -> [NodeId] -> [(QVar, CVar)] -> String
+-- printG _ _ [] _ = ""
+-- printG g eds (h:t) vars = let node = getNode g h
+--                               (str, trav) = fromNode g eds node t vars
+--                           in str ++ printG g eds trav vars
+
+
+-- -- from Node to OpenQASM3
+-- -- g -> eds -> node -> traverse_order -> q_c_vars -> (openqasm3 text, updated_traverse_order)
+-- fromNode :: Graph -> Edges -> Node -> [NodeId] -> [(QVar, CVar)] -> (String, [NodeId])
+-- fromNode g eds (Block nid list_cfg) trav vars = (fromListCFGNot 2 list_cfg vars, trav)
+-- fromNode g eds (MeasBlock nid list_cfg) next_trav vars = let init_text = fromListCFGNot 0 list_cfg vars
+--                                                              (true_trav, false_trav) = measTrav g eds nid
+--                                                              then_text =  "  " ++ printG g eds true_trav vars ++ "}\n"
+--                                                              else_text = "else{\n  " ++ printG g eds false_trav vars ++ "}\n"
+--                                                              upd_trav = filter (`notElem` (true_trav++false_trav)) next_trav
+--                                                          in (init_text ++ then_text ++ else_text, upd_trav)
+-- fromNode g eds (WhlBlock nid list_cfg) next_trav vars = let init_text = fromListCFGNot 1 list_cfg vars 
+--                                                             true_trav = whlTrav g eds nid
+--                                                             do_text = "  " ++ printG g eds true_trav vars 
+--                                                             end_text = (fromListCFGNot (-1) list_cfg vars) ++ "}\n"
+--                                                             upd_trav = filter (`notElem` true_trav) next_trav
+--                                                         in (init_text ++ do_text ++ end_text, upd_trav)
+
+
+-- fromListCFGNot :: Int -> [CFGNot] -> [(QVar, CVar)] -> String
+-- fromListCFGNot _ [] _ = ""
+-- fromListCFGNot if_or_whl (h:t) vars = case h of
+--   SSkip -> "nop;\n" ++ fromListCFGNot if_or_whl t vars
+--   otherwise -> fromCFGNot if_or_whl h vars ++ "\n" ++ fromListCFGNot if_or_whl t vars
+
+
+-- fromCFGNot :: Int -> CFGNot -> [(QVar, CVar)] -> String
+-- --fromCFGNot SSkip = ""
+-- fromCFGNot _ (UU g qvars) _ = let g_opq3 = gatesToOpenQASM3 g
+--                                   qvars_opq3 = qvarsToString qvars
+--                               in g_opq3 ++ qvars_opq3 ++ ";"
+-- fromCFGNot if_or_whl (MeasQ qvar) vars = let cvar = findCVar qvar vars 
+--                                              meas = cvar ++ " = measure " ++ qvar ++ ";\n"
+--                                              if_text = "if (" ++ cvar ++ "==1){"
+--                                              whl_text = "while (" ++ cvar ++ "==1){"
+--                                          in case if_or_whl of
+--                                               0 -> meas ++ if_text
+--                                               1 -> meas ++ whl_text
+--                                               -1 -> takeWhile (\e -> e /= '\n') meas
+
