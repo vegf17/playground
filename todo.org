@@ -1,0 +1,43 @@
+#+TITLE: To Do List
+
+* Tasks [0/3]
+:PROPERTIES:
+:COOKIE_DATA: todo
+:END:
+
+** TODO Classical language [4/7]
+DEADLINE: <2026-04-24 Fri>
+:PROPERTIES:
+:LANGUAGE: C ::= sk | x:=e | C;C | if b then C else C | while b do C
+:END:
+
+*** DONE Grammar
+*** DONE CFG (without cycles)
+*** DONE CFG (with cycles)
+*** DONE SSA (without cycles)
+*** TODO SSA (with cycles)
+*** TODO Simple optimisations
+*** TODO To assembly code
+
+** TODO Quantum Language [0/4]
+DEADLINE: <2026-05-01 Fri>
+:PROPERTIES:
+:LANGUAGE: C ::= sk | U[q] | M(q, C, C) | C;C | while M(q) do C
+:END:
+
+*** TODO Grammar
+*** TODO CFG (without cycles)
+*** TODO CFG (with cycles)
+*** TODO To OpenQasm
+
+** TODO Quantum Concurrent Language [0/5]
+DEADLINE: <2026-05-05 Tue>
+:PROPERTIES:
+:LANGUAGE: C ::= sk | U[q] | M(q, C, C) | C;C | while M(q) do C | C||C
+:END:
+
+*** TODO Grammar
+*** TODO Scheduler to eliminate non-determinism
+*** TODO CFG (without cycles)
+*** TODO CFG (with cycles)
+*** TODO To OpenQasm

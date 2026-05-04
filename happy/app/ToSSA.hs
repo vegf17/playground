@@ -6,7 +6,25 @@ We only consider ToCFG2, hence from data Node we only need to deal with Block, T
 -}
 
 {-
+To do:
+Adapt the code to support cyclic CFG (bcs of while loops)
+-}
+
+{-
 Problems:
+1) x:=0; while (tt) do {x:=1; while (ff) do  {skip}}
+2) x:=0; while (tt) do {x:=1}; while (ff) do {skip}
+3) while (x<2) do {x:=x+1; while (y<2) do {y:=y+2; while (z<2) do {z:=z+2}}}
+4) while (tt) do {skip; if (ff) then {x:=1} else {y:=1}}
+
+it seems that the function traverseLoopGraph visits the edges corresponding to the body loop and
+exit every time it goes to the while node; ideally it should only go to the exit node after
+finishing the routine of visiting the while node and the while body
+
+the function lastOccLoop should keep the repetitions introduced by while loops while it keeps the
+last repetition introduced by the merging nodes
+
+---------
 The main problem is that NodeVarTrack is not representing propagated SSA environments at CFG
 points. Since information is not passed from predecessors to successors, the code tries to recover
 it by looking at ancestors, which is both unnecessary and wrong. The right fix is to propagate
@@ -24,56 +42,19 @@ import Com
 import Data.List
 
 type VarTrack = [(Var, [Var])]
-type SplitNode = [(NodeId, [NodeId])]
-type MergingNode = [([NodeId], NodeId)]
 type NodeVarTrack = [(NodeId, VarTrack)]
 
 type VarLog = [(Var, Int)]
 
 
--- runSSA :: String -> IO()
--- runSSA s = do
---   let c = testCom s
---       (g, es, entry, exit, next) = toCFG c 0
---       (g_ssa, nvar, varlog) = toSSA g es
---   putStrLn (drawCFG g_ssa es)
-  
--- runGraph :: String -> Graph
--- runGraph s = let c = testCom s
---                  (g, es, entry, exit, next) = toCFG c 0
---                  join_nodes = endDiv es []              
---                  (g', vart) = toSSAGraph g [] join_nodes
---              in g'
-
-test_toSSA :: String -> IO()
-test_toSSA s = do
-  let c = testCom s
-      (g, es, entry, exit, next) = toCFG c 0
-      ((g_ssa, nvart, varlog), trav_order) = toSSA g es
-  putStrLn (drawCFG g_ssa es)
-  putStrLn "NodeVarTrack:"
-  putStrLn $ show(nvart)
-  putStrLn "\n VarLog:"
-  putStrLn $ show(varlog)
-  putStrLn "\n Traverse:"
-  putStrLn $ show trav_order
-  putStrLn "\n"  
-
-test_traverseGraph :: String -> IO()
-test_traverseGraph s = do
-  let c = testCom s
-      (g, es, entry, exit, next) = toCFG c 0
-      (g', es') = rmvEmptyNode (g, es)
-      traverse = lastOcc $ traverseGraph g' es' (head entry)
-  putStrLn $ drawCFG g' es'
-  putStrLn $ show traverse
-
-
-toSSA :: Graph -> Edges -> ((Graph, NodeVarTrack, VarLog), [(NodeId, [NodeId])])
-toSSA [] _ = (([], [], []),[])
-toSSA graph eds = let init_node = getNodeId $ head graph
-                      trav_order = lastOcc $ traverseGraph graph eds init_node -- [(NodeId, [NodeId])]
-                  in (toSSAGraph graph eds [] [] trav_order, trav_order)
+-- toSSA :: Graph -> Edges -> ((Graph, NodeVarTrack, VarLog), [(NodeId, [NodeId])])
+-- toSSA [] _ = (([], [], []),[])
+-- toSSA graph eds = let init_node = getNodeId $ head graph
+--                       --trav_order = lastOcc $ traverseGraph graph eds init_node -- [(NodeId, [NodeId])]
+--                       nodes_id = map getNodeId graph
+--                       while_nodes = filter (\n -> isWhileNode graph eds n) nodes_id
+--                       trav_order = lastOccLoop while_nodes (traverseLoopGraph graph eds init_node []) -- [(NodeId, [NodeId])]
+--                   in (toSSAGraph graph eds [] [] trav_order, trav_order)
 
 
 toSSAGraph :: Graph -> Edges -> NodeVarTrack -> VarLog -> [(NodeId, [NodeId])] -> (Graph, NodeVarTrack, VarLog)
@@ -174,41 +155,6 @@ mergePredVarts vts =
   | v <- nub $ concatMap (map fst) vts
   ]
 
--- addReallyPhi :: Node -> [VarTrack] -> [Var] -> VarLog -> (Node, VarTrack, VarLog)
--- addReallyPhi node vart_preds vars_preds varlog =
---   let lcom = retrieveLCFGNotFromNode node
---       fix_vart = mergingVart vart_preds (nub vars_preds)
---       (vars_preds_repeat, vars_preds_solo) = splitVars vars_preds
---       var_phi_rep = [(var, [head lv | (v, lv) <- vart_preds, v == var]) | var <- vars_preds_repeat]
---       --var_phi_solo = [(var ++ show(0), [])]
---       phi_info = [ (oldv, oldv ++ show(snd $ head $ filter (\(var, _) -> var == oldv) varlog), lv) | (oldv, lv) <- var_phi_rep, notAllEqualLv lv]
---       phi_cfgcnot = [Phi newv lv | (_, newv, lv) <- phi_info]
---       node_phi = updNodeLCFGNot node (phi_cfgcnot ++ lcom)
---       upd_vart = foldl (\vt (oldv, newv, _) -> updVarTrack vt (oldv, newv)) fix_vart phi_info
---       upd_varlog = map (\(var,n) -> if var `elem` [oldv | (oldv,_,_) <- phi_info]
---                                     then (var,n+1)
---                                     else (var,n)) varlog
---   in (node_phi, upd_vart, upd_varlog)
---   where
---     notAllEqualLv :: [Var] -> Bool
---     notAllEqualLv (h:t) = not $ and [h == e | e <- t]
---     notAllEqualLv [] = False
-
---     splitVars :: [Var] -> ([Var],[Var])
---     splitVars vars_preds = let rep_vars = nub $ repeatedVars vars_preds
---                                solo_vars = soloVars vars_preds
---                            in (rep_vars, solo_vars)
-
---     soloVars :: [Var] -> [Var]
---     soloVars [] = []
---     soloVars (h:t) = if elem h t
---                      then soloVars (rmvVar t h)
---                      else h : soloVars t
-
---     rmvVar :: [Var] -> Var -> [Var]
---     rmvVar [] _ = []
---     rmvVar (h:t) v = if h==v then rmvVar t v else h : rmvVar t v
-
                        
 mergingVart :: VarTrack -> [Var] -> VarTrack
 mergingVart [] _ = []
@@ -229,10 +175,14 @@ repeatedVars (h:t) = if elem h t
 
 toSSANode :: Node -> NodeVarTrack -> VarLog -> (Node, NodeVarTrack, VarLog)
 toSSANode (Empty n) nvart varlog = ((Empty n), nvart, varlog)
-toSSANode (Test n lcom) nvart varlog = let vart = retrieveVarTrack n nvart
-                                           (lcom', vart', varlog') = toSSAListCFGNot lcom vart varlog
-                                           nvart' = updNodeVarTrack nvart n vart'
-                                       in (Test n lcom', nvart', varlog')
+toSSANode (TestIf n lcom) nvart varlog = let vart = retrieveVarTrack n nvart
+                                             (lcom', vart', varlog') = toSSAListCFGNot lcom vart varlog
+                                             nvart' = updNodeVarTrack nvart n vart'
+                                         in (TestIf n lcom', nvart', varlog')
+toSSANode (TestWhl n lcom) nvart varlog = let vart = retrieveVarTrack n nvart
+                                              (lcom', vart', varlog') = toSSAListCFGNot lcom vart varlog
+                                              nvart' = updNodeVarTrack nvart n vart'
+                                          in (TestWhl n lcom', nvart', varlog')
 toSSANode (Block n lcom) nvart varlog = let vart = retrieveVarTrack n nvart
                                             (lcom', vart', varlog') = toSSAListCFGNot lcom vart varlog
                                             nvart' = updNodeVarTrack nvart n vart'
@@ -273,13 +223,15 @@ toSSACFGNot (Phi var lvar) vart varlog = (Phi var lvar, vart, varlog)
 updNodeLCFGNot :: Node -> [CFGNot] -> Node
 updNodeLCFGNot (Empty n) _ = Empty n
 updNodeLCFGNot (Block n lcom) upd_lcom = Block n upd_lcom
-updNodeLCFGNot (Test n lcom) upd_lcom = Test n upd_lcom
+updNodeLCFGNot (TestIf n lcom) upd_lcom = TestIf n upd_lcom
+updNodeLCFGNot (TestWhl n lcom) upd_lcom = TestWhl n upd_lcom
 updNodeLCFGNot _ _ = error "updNodeLCFGNot: Invalid Node"
 
 retrieveLCFGNotFromNode :: Node -> [CFGNot]
 retrieveLCFGNotFromNode (Empty n) = []
 retrieveLCFGNotFromNode (Block _ lcom) = lcom
-retrieveLCFGNotFromNode (Test _ lcom) = lcom
+retrieveLCFGNotFromNode (TestIf _ lcom) = lcom
+retrieveLCFGNotFromNode (TestWhl _ lcom) = lcom
 retrieveLCFGNotFromNode _ = error "retrieveLCFGNotFromNode: Invalid Node"
 
 updNodeInGraph :: Graph -> Node -> NodeId -> Graph
@@ -297,13 +249,165 @@ lastOcc (h:t) = if elem h t
                 then lastOcc t
                 else h : lastOcc t
 
+
+lastOccLoop :: [NodeId] -> [(NodeId, [NodeId])] -> [(NodeId, [NodeId])]
+lastOccLoop _ [] = []
+lastOccLoop while_nodes (h@(nid, l_nid):t) = if elem nid while_nodes
+                                             then h : lastOccLoop (nub $ l_nid++while_nodes) t
+                                             else if elem h t
+                                                  then lastOccLoop while_nodes t
+                                                  else h : lastOccLoop while_nodes t
+                                     
+
 --traverse a graph given an initial node
 -- [(NodeId, [NodeId])] --> [(NodeId, list of predecessors)]
+-- traverseGraph :: Graph -> Edges -> NodeId -> [(NodeId, [NodeId])]
+-- traverseGraph g eds nid = case isIfNode g eds nid of
+--   False -> let succ = [n_out | (n, _, n_out) <- eds, nid==n]
+--                pred = [n | (n, _, n_out) <- eds, nid==n_out] 
+--                next = concat $ map (\n -> traverseGraph g eds n) succ
+--            in (nid, pred):next
+--   True -> let succ_true = [n_out | (n, TrueEdge, n_out) <- eds, nid==n]
+--               succ_false = [n_out | (n, FalseEdge, n_out) <- eds, nid==n]
+--               pred = [n | (n, _, n_out) <- eds, nid==n_out]
+--               next_true = concat $ map (\n -> traverseGraph g eds n) succ_true
+--               next_false = concat $ map (\n -> traverseGraph g eds n) succ_false
+--               next = next_true ++ next_false
+--           in (nid, pred) : next
+--original, without loops
 traverseGraph :: Graph -> Edges -> NodeId -> [(NodeId, [NodeId])]
 traverseGraph g eds nid = let succ = [n_out | (n, _, n_out) <- eds, nid==n]
                               pred = [n | (n, _, n_out) <- eds, nid==n_out] 
                               next = concat $ map (\n -> traverseGraph g eds n) succ
                            in (nid, pred):next
+
+
+-- Graph -> Edges -> NodeId -> [NodeId] -> [(NodeId, [NodeId])]
+-- Graph -> Edges -> Current node -> [(Visited node, how many times was visited)] -> [(NodeId, list of NodeId for phi functions)]
+traverseLoopGraph :: Graph -> Edges -> NodeId -> [(NodeId,Int)] -> [(NodeId, [NodeId])]
+traverseLoopGraph g eds nid l = case isWhileNode g eds nid of
+  False -> let succ = [n_out | (n, _, n_out) <- eds, nid==n]
+               pred = [n | (n, _, n_out) <- eds, nid==n_out]
+               l' = updVisitedNodesCount nid l
+               next = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n l') succ
+           in (nid, pred):next
+  True -> let succ_true = [n_out | (n, TrueEdge, n_out) <- eds, nid==n]
+              succ_false = [n_out | (n, FalseEdge, n_out) <- eds, nid==n]
+              pred = [n | (n, _, n_out) <- eds, nid==n_out]
+              l' = updVisitedNodesCount nid l
+              next_true = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n l') succ_true
+          in if visitNumber nid l' == 2
+             then let next_false = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n l') succ_false
+                  in (nid, pred):(next_true ++ next_false)
+             else (nid,pred):next_true
+
+-- Debug 
+-- traverseLoopGraph :: Graph -> Edges -> NodeId -> [(NodeId,Int)] -> [((NodeId, [NodeId]), [(NodeId,Int)])]--[[(NodeId,Int)]] --[(NodeId, [NodeId])]
+-- traverseLoopGraph g eds nid l = case isWhileNode g eds nid of
+--   False -> let succ = [n_out | (n, _, n_out) <- eds, nid==n]
+--                pred = [n | (n, _, n_out) <- eds, nid==n_out]
+--                l' = updVisitedNodesCount nid l
+--                --next = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n (updVisitedNodesCount n l')) succ
+--                next = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n l') succ
+--            in ((nid,pred), l'):next --(nid, pred):next
+--   True -> let succ_true = [n_out | (n, TrueEdge, n_out) <- eds, nid==n]
+--               succ_false = [n_out | (n, FalseEdge, n_out) <- eds, nid==n]
+--               pred = [n | (n, _, n_out) <- eds, nid==n_out]
+--               l' = updVisitedNodesCount nid l
+--               next_true = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n l') succ_true
+--           in if visitNumber nid l' == 2
+--              then let next_false = concat $ map (\n -> if exceedLimit g eds n l' then [] else traverseLoopGraph g eds n l') succ_false
+--                   in ((nid,pred), l'):(next_true ++ next_false) --(nid, pred):(next_true ++ next_false)
+--              else ((nid,pred), l'):next_true --(nid,pred):next_true
+
+visitNumber :: NodeId -> [(NodeId, Int)] -> Int
+visitNumber nid [] = 0
+visitNumber nid ((n_id, i):t) = if nid==n_id then i else visitNumber nid t
+
+exceedLimit :: Graph -> Edges -> NodeId -> [(NodeId, Int)] -> Bool
+exceedLimit _ _ _ [] = False -- initial state or the node was not visited yet
+exceedLimit g eds nid ((n, i):t) = if nid==n 
+                                   then if i>=2
+                                        then True
+                                        else False
+                                   else exceedLimit g eds nid t
+-- exceedLimit :: Graph -> Edges -> NodeId -> [(NodeId, Int)] -> Bool
+-- exceedLimit _ _ _ [] = False -- initial state or the node was not visited yet
+-- exceedLimit g eds nid ((n, i):t) = case isWhileNode g eds nid of
+--   True -> if nid==n 
+--           then if i>=2
+--                then True
+--                else False
+--           else exceedLimit g eds nid t
+--   False -> if nid==n
+--            then if i>=2
+--                 then True
+--                 else False
+--            else exceedLimit g eds nid t
+
+updVisitedNodesCount :: NodeId -> [(NodeId, Int)] -> [(NodeId, Int)]
+updVisitedNodesCount nid l = let visited_nodes = map fst l
+                             in if elem nid visited_nodes
+                                then map (\(n,i) -> if n==nid then (n, i+1) else (n,i)) l
+                                else (nid, 1) : l
+  
+
+-- Graph -> Edges -> NodeId -> [NodeId] -> [(NodeId, [NodeId])]
+-- Graph -> Edges -> Current node -> Visited nodes -> [(NodeId, list of NodeId for phi functions)]
+-- traverseLoopGraph :: Graph -> Edges -> NodeId -> [NodeId] -> [(NodeId, [NodeId])]
+-- traverseLoopGraph g eds nid visited_nodes = let succ = [n_out | (n, _, n_out) <- eds, nid==n]
+--                                                 pred = [n | (n, _, n_out) <- eds, nid==n_out]
+--                                                 next = concat $ map (\n -> if elem n visited_nodes then [] else traverseLoopGraph g eds n (n:visited_nodes)) succ
+--                                             in (nid, pred):next
+-- traverseLoopGraph :: Graph -> Edges -> NodeId -> [NodeId] -> [(NodeId, [NodeId])]
+-- traverseLoopGraph g eds nid visited_nodes = case isWhileNode g eds nid of
+--   True -> let succ = [n_out | (n, _, n_out) <- eds, nid==n]
+--               pred = [n | (n, _, n_out) <- eds, nid==n_out]
+--               next = concat $ map (\n -> if elem n visited_nodes then [] else traverseLoopGraph g eds n (n:visited_nodes)) succ
+--           in (nid, pred):next
+--   False -> let succ = [n_out | (n, _, n_out) <- eds, nid==n]
+--                pred = [n | (n, _, n_out) <- eds, nid==n_out] 
+--                next = concat $ map (\n -> traverseLoopGraph g eds n (n:visited_nodes)) succ
+--            in (nid, pred):next
+
+-- the goal is this function, is to guarantee that while nodes occur maximum three times and non
+-- while nodes occur maximum two times
+-- NodeId -> [NodeId] -> Int -> Bool
+-- Current node -> Visited nodes -> counts the number of times the current node appears in the visited node
+whileTraversal :: Graph -> Edges -> NodeId -> [NodeId] -> Int -> Bool
+whileTraversal _ _ _ [] _ = False
+whileTraversal g eds nid (h:t) count = case isWhileNode g eds nid of
+  True -> if count>4
+          then False
+          else if nid==h
+               then whileTraversal g eds nid t (count+1)
+               else whileTraversal g eds nid t count
+  False -> if count >3
+           then False
+           else if nid==h
+                then whileTraversal g eds nid t (count+1)
+                else whileTraversal g eds nid t count
+
+isWhileNode :: Graph -> Edges -> NodeId -> Bool
+isWhileNode g eds nid = isTestWhlNode $ getNode g nid
+
+isIfNode :: Graph -> Edges -> NodeId -> Bool
+isIfNode g eds nid = isTestIfNode $ getNode g nid
+
+-- reachesNodeId :: Edges -> NodeId -> [NodeId] -> Bool
+-- reachesNodeId _ _ [] = False
+-- reachesNodeId eds nid succ = case elem nid succ of
+--   True -> True
+--   False -> let succ_succ = [n_out | h <- succ, (n,_,n_out) <- eds, h==n]
+--            in reachesNodeId eds nid succ_succ
+
+isTestWhlNode :: Node -> Bool
+isTestWhlNode (TestWhl _ _) = True
+isTestWhlNode _ = False
+
+isTestIfNode :: Node -> Bool
+isTestIfNode (TestIf _ _) = True
+isTestIfNode _ = False
 
 getNode :: Graph -> NodeId -> Node
 getNode [] _ = error "node not found"
@@ -395,7 +499,8 @@ getVarNode (h:t) id = if (getNodeId h == id)
 
 getVar :: Node -> [Var]
 getVar (Block id lcmds) = getVarListCFGNot lcmds
-getVar (Test id lcmds) = getVarListCFGNot lcmds
+getVar (TestIf id lcmds) = getVarListCFGNot lcmds
+getVar (TestWhl id lcmds) = getVarListCFGNot lcmds
 getVar _ = error "getVar: node that allowed"
 
 getVarListCFGNot :: [CFGNot] -> [Var]
@@ -428,7 +533,134 @@ getVarBExp (Gre ae1 ae2) = (getVarAExp ae1) ++ (getVarAExp ae2)
 
 getNodeId :: Node -> NodeId
 getNodeId (Block id _) = id
-getNodeId (Test id _) = id
+getNodeId (TestIf id _) = id
+getNodeId (TestWhl id _) = id
 getNodeId (Empty id) = id
 getNodeId _ = error "getNodeId: node not allowed"
 ---Auxiliary functions---
+
+
+---Test functions---
+test_commands = [
+  "x:=0",
+  "x:=0;y:=1",
+  "if (tt) then {skip} else {skip}",
+  "if (tt) then {skip} else {skip}; x:=1",
+  "if (tt) then {if (tt) then {x:=1} else {skip}} else {skip}; y:=x",
+  "x:=1; if (x>1) then {x:=2} else {x:=3}; if (x<5) then {x:=x+1} else {x:=x-1}",
+  "x:=1; if (x>1) then {x:=2} else {x:=3}; x:=x+1; if (x<5) then {x:=x+1} else {x:=x-1}",
+  "x:=1; if (x>2) then {if (x<1) then {x:=1} else {x:=2}} else {y:=0}; y:=x+1"
+                ]
+
+test_commands_while = [
+  "x:=0",
+  "x:=0;y:=1",
+  "if (tt) then {skip} else {skip}",
+  "if (tt) then {skip} else {skip}; x:=1",
+  "while (tt) do {skip}",
+  "x:=0; while (tt) do {skip}",
+  "while (tt) do {skip}; while (ff) do {x:=1}",
+  "while (tt) do {skip; while (ff) do {x:=1}}",
+  "while (x<2) do {x:=x+1; while (y<2) do {y:=y+2; while (z<2) do {z:=z+2}}}",
+  "while (tt) do {skip; if (ff) then {x:=1} else {y:=1}}"
+                ]
+
+
+test_function :: (String -> IO()) -> IO()
+test_function f = test_function_aux f test_commands
+
+test_function_aux :: (String -> IO()) -> [String] -> IO()
+test_function_aux _ [] = putStrLn ""
+test_function_aux f (h:t) = do
+  putStrLn "---------------"
+  putStrLn $ show h
+  x <- f h
+  putStrLn "---------------\n"
+  y <- test_function_aux f t
+  return ()
+  
+  
+
+-- runSSA :: String -> IO()
+-- runSSA s = do
+--   let c = testCom s
+--       (g, es, entry, exit, next) = toCFG c 0
+--       (g_ssa, nvar, varlog) = toSSA g es
+--   putStrLn (drawCFG g_ssa es)
+  
+-- runGraph :: String -> Graph
+-- runGraph s = let c = testCom s
+--                  (g, es, entry, exit, next) = toCFG c 0
+--                  join_nodes = endDiv es []              
+--                  (g', vart) = toSSAGraph g [] join_nodes
+--              in g'
+
+-- test_toSSA :: String -> IO()
+-- test_toSSA s = do
+--   let c = testCom s
+--       (g, es, entry, exit, next) = toCFG c 0
+--       ((g_ssa, nvart, varlog), trav_order) = toSSA g es
+--   putStrLn (drawCFG g_ssa es)
+--   putStrLn "NodeVarTrack:"
+--   putStrLn $ show(nvart)
+--   putStrLn "\n VarLog:"
+--   putStrLn $ show(varlog)
+--   putStrLn "\n Traverse:"
+--   putStrLn $ show trav_order
+--   putStrLn "\n"  
+
+test_traverseGraph :: String -> IO()
+test_traverseGraph s = do
+  let c = testCom s
+      (g, es, entry, exit, next) = toCFG c 0
+      (g', es') = rmvEmptyNode (g, es)
+      -- traverse = lastOcc $ traverseGraph g' es' (head entry)
+      traverse = traverseGraph g' es' (head entry)
+  putStrLn $ drawCFG g' es'
+  putStrLn $ show traverse
+
+showTrace :: [((NodeId, [NodeId]), [(NodeId,Int)])] -> String
+showTrace xs =
+  unlines $
+    zipWith showEntry [1 :: Int ..] xs
+  where
+    showEntry i ((nid, preds), visits) =
+      unlines
+        [ "Step " ++ show i
+        , "  Node:        " ++ show nid
+        , "  Predecessors:" ++ showNodeList preds
+        , "  Visits:      " ++ showVisits visits
+        ]
+
+    showNodeList [] = " none"
+    showNodeList ns = " " ++ joinWith ", " (map show ns)
+
+    showVisits [] = " none"
+    showVisits vs =
+      " " ++ joinWith ", " [show n ++ "↦" ++ show c | (n,c) <- vs]
+
+    joinWith _ [] = ""
+    joinWith _ [x] = x
+    joinWith sep (x:xs') = x ++ sep ++ joinWith sep xs'
+
+test_traverseLoopGraph :: String -> IO()
+test_traverseLoopGraph s = do
+  let c = testCom s
+      (g, es, entry, exit, next) = toCFG c 0
+      (g', es') = rmvEmptyNode (g, es)
+      nodes_id = map getNodeId g'
+      while_nodes = filter (\n -> isWhileNode g' es' n) nodes_id
+      --traverse = lastOccLoop while_nodes ( traverseLoopGraph g' es' (head entry) []) -- removed lastOcc, which was added bcs of merging points
+      traverse = traverseLoopGraph g' es' (head entry) []
+  putStrLn $ drawCFG g' es'
+  putStrLn $ show traverse
+  --putStrLn $ showTrace traverse -- for debug
+
+test_isWhileNode :: String -> IO()
+test_isWhileNode s = do
+  let c = testCom s
+      (g, es, entry, exit, next) = toCFG c 0
+  putStrLn $ drawCFG g es
+  num <- getLine
+  putStrLn $ show $ isWhileNode g es (read num :: Int)
+---Test functions---

@@ -25,11 +25,11 @@ toCFG (Seq c1 c2) n = if (hasBranches (Seq c1 c2)) == False
                            in (g, eds, entry1, exit2, next2)
 toCFG (IfC bexp c1 c2) n = let (g1, eds1, entry1, exit1, next1) = toCFG c1 (n+1)
                                (g2, eds2, entry2, exit2, next2) = toCFG c2 next1
-                               g = (Test n [BE bexp]):(g1++g2)
+                               g = (TestIf n [BE bexp]):(g1++g2)
                                eds = [(n, TrueEdge, entry) | entry <- entry1] ++ [(n, FalseEdge, entry) | entry <- entry2] ++ eds1++eds2
                            in (g, eds, [n], exit1++exit2, next2)
 toCFG (Whl bexp c) n = let (gT, edsT, entryT, exitT, nextT) = toCFG c (n+1)
-                           g = (Test n [BE bexp]):(Empty nextT):gT
+                           g = (TestWhl n [BE bexp]):(Empty nextT):gT
                            eds = (n, FalseEdge, nextT):([(n, TrueEdge, entry) | entry <- entryT] ++ [(exit, Uncond, n) | exit <- exitT] ++ edsT)
                        in (g, eds, [n], [nextT], nextT+1)
 
@@ -57,7 +57,8 @@ rmvNumber :: Node -> Int
 rmvNumber (Entry n) = n
 rmvNumber (Exit n) = n
 rmvNumber (Block n _) = n
-rmvNumber (Test n _) = n
+rmvNumber (TestIf n _) = n
+rmvNumber (TestWhl n _) = n
 rmvNumber (Join n) = n
 rmvNumber (Empty n) = n
 
@@ -86,7 +87,8 @@ nodeId (Entry n)     = n
 nodeId (Exit n)      = n
 nodeId (Join n)      = n
 nodeId (Block n _)   = n
-nodeId (Test n _)    = n
+nodeId (TestIf n _)    = n
+nodeId (TestWhl n _)    = n
 nodeId (Empty n)      = n
 
 showNode :: Node -> String
@@ -94,7 +96,8 @@ showNode (Entry n) = "[" ++ show n ++ "] Entry"
 showNode (Exit n) = "[" ++ show n ++ "] Exit"
 showNode (Join n) = "[" ++ show n ++ "] Join"
 showNode (Block n cmds) = "[" ++ show n ++ "] Block: " ++ showCFGNot cmds
-showNode (Test n cmds) =  "[" ++ show n ++ "] Test: " ++ showCFGNot cmds
+showNode (TestIf n cmds) =  "[" ++ show n ++ "] TestIf: " ++ showCFGNot cmds
+showNode (TestWhl n cmds) =  "[" ++ show n ++ "] TestWhl: " ++ showCFGNot cmds
 showNode (Empty n) = "[" ++ show n ++ "] Empty"
 
 showCFGNot :: [CFGNot] -> String

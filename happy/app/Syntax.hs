@@ -65,7 +65,8 @@ data CFGNot = SSkip
 data Node = Entry NodeId
           | Exit NodeId
           | Block NodeId [CFGNot]
-          | Test NodeId [CFGNot]
+          | TestIf NodeId [CFGNot]
+          | TestWhl NodeId [CFGNot]
           | Join NodeId
           | Empty NodeId
           deriving (Show, Eq)

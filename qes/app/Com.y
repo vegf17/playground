@@ -1,0 +1,528 @@
+{
+module Com where
+
+import Data.Char
+import Data.Matrix
+import Data.Complex
+import Data.Ratio
+
+import Syntax
+}
+
+%name com C
+%name aexp AExp
+%name bexp BExp
+%name stq StQ
+
+%tokentype { Token }
+
+%error { parseError }
+
+--Tokens
+%token
+  --Generic tokens
+  doub { TokenDoub $$ }  --  $$ is a placeholder that represents the value of this token
+  var { TokenVar $$ }
+  ket { TokenKet $$ }
+  bra { TokenBra $$ }
+  int { TokenInt $$ }
+  '(' { TokenOP }
+  ')' { TokenCP }
+  '[' { TokenOB }
+  ']' { TokenCB }
+  '{' { TokenOCB }
+  '}' { TokenCCB }
+  ',' { TokenComma }
+  --File tokens
+  progsep { TokenProgSep $$ }
+  cs_kw { TokenCS }
+  qs_kw { TokenQS }
+  kstep_kw { TokenKStep }
+  hist_kw { TokenHist }
+  --Command tokens
+  skip { TokenSkip }
+  ":=" { TokenAss }
+  ';' { TokenSeq }
+  "||" { TokenPar }
+  "if" { TokenIf }
+  "else" { TokenElse }
+  "then" { TokenThen }
+  "while" { TokenWhile }
+  "do" { TokenDo }
+  "or" { TokenOr }
+  "Reset" { TokenReset }
+  "Meas" { TokenMeas }
+  "await" { TokenAwait }
+  "atom" { TokenAtom }
+  "(+)" { TokenProbC }
+  rational { TokenRational $$}
+  --Gates tokens
+  "I" { TokenId }
+  "X" { TokenX }
+  "Y" { TokenY }
+  "Z" { TokenZ }
+  "H" { TokenH }
+  "S" { TokenS }
+  "T" { TokenT }
+  "SWAP" { TokenSWAP }
+  "CNOT" { TokenCNOT }
+  "CZ" { TokenCZ }
+  "TOF" { TokenTOF }
+  "Ph" { TokenPh }
+  "CPh" { TokenCPh }
+  udname { TokenUD $$ }
+  --AE tokens
+  '+' { TokenPlus }
+  '-' { TokenMinus }
+  '*' { TokenMult }
+  '/' { TokenDiv }
+  "pi" { TokenPi }
+  "sqrt" { TokenSqrt }
+  --BE tokens
+  "tt" { TokenTrue }
+  "ff" { TokenFalse }
+  "AND" { TokenAnd }
+  "OR" { TokenOrBExp }
+  '~' { TokenNot}
+  '<' { TokenLess }
+  '>' { TokenGreat }
+  "<=" { TokenLE }
+  ">=" { TokenGE }
+  "==" { TokenEq }
+  
+--Precedence of the operators
+%left '+' '-' -- left-associative with lower precedence
+%left '*' '/' -- left-associative with higher precedence
+%left "AND" "OR"
+%left '~'
+%nonassoc "==" '<' '>' ">=" "<="
+%left NEG
+%left "await" "atom" "if" "while" "Reset" "Meas"
+%left "||"
+%left "or" "(+)"
+%left ';'
+%%
+
+-- Production rules for the grammar
+--Production rules for files
+-- File :: { [((String, Int, Int), (C,StC,L,StQ))] }
+-- File : Prog File { $1 : $2 }
+--   | Prog { [$1] }
+
+--Production rules for programs
+-- Prog :: { ((String, Int, Int), (C,StC,L,StQ))  }
+-- Prog : Identifier Info States C Identifier  { let
+--                                                 (hist,k) = $2
+--                                                 (cs,(l,qs)) = $3
+--                                               in if $1 /= $5
+--                                                  then error ("Prog separator mismatch: " ++ show $1 ++ " vs " ++ show $5)
+--                                                  else (($1, hist, k), ($4, cs, l, qs)) }
+
+-- Identifier :: { String }
+-- Identifier : progsep { $1 }
+
+-- Info :: { (Int, Int) }
+-- Info : Hist  KStep {($1, $2)}
+-- --  | KStep { ((0,[]), $1) }
+
+-- -- Hist :: { (Int, [[String]])  }
+-- -- Hist : {- empty -} { (0, []) }
+
+-- Hist :: { Int }
+-- Hist : hist_kw int { $2 }
+
+-- KStep :: { Int }
+-- KStep : kstep_kw int { $2 }
+
+-- States :: { (StC, (L, StQ)) }
+-- States : cs_kw StC qs_kw StQ { ($2, $4) }
+--   | cs_kw StC { ($2, ([], fromLists [[]])) }
+--   | qs_kw StQ { ([], $2) }
+--   | {- empty -} { ([], ([], fromLists [[]])) }
+
+
+  
+--Production rules for programs
+-- Conf :: { Conf } -- this is the default start symbol, meaning that com :: [Token] --> Prog
+-- Conf : C ',' StQ { ($1, $3) }
+--   | C { ($1, [])  }
+  
+-- Production rules for the commands  
+C :: { C }
+C : skip { Skip }
+  | Gates '[' VarNameList ']' {U $1 (reverse $3)} 
+  | "Meas" '(' var ',' C ',' C ')' {Meas $3 $5 $7}
+  | C ';' C { Seq $1 $3 }
+  | "while" var "do" '{' C '}' {Whl $2 $5}
+  | '(' C ')' { $2 }
+
+-- Production rules for arithmetic expressions  
+AExp :: { AExp }  
+AExp : AExp '+' AExp { Plus $1 $3 }
+  | AExp '-' AExp { Minus $1 $3 }
+  | AExp '*' AExp  { Mult $1 $3 }
+  | AExp '/' AExp { Div $1 $3 }
+  | "pi" { Pi }
+  | "sqrt" AExp { Sqrt $2 }
+  | '(' AExp ')' { $2 }
+  | '-' AExp %prec NEG { Negate $2 } 
+  | Doub { Num $1 }
+  | var { Var $1 }
+
+-- Production rules for Boolean expressions
+BExp :: { BExp }
+BExp : "tt" { BTrue }
+  | "ff" { BFalse }
+  | '~' BExp { Not $2 }
+  | BExp "AND" BExp { And $1 $3 }
+  | BExp "OR" BExp { OrB $1 $3 }
+  | AExp "==" AExp { Equ $1 $3 }
+  | AExp '<' AExp { Less $1 $3 }
+  | AExp '>' AExp { Gre $1 $3 }
+  | AExp "<=" AExp { Leq $1 $3 }
+  | AExp ">=" AExp { Geq $1 $3 }
+  | '(' BExp ')' { $2 }
+
+
+--this returns the var name list in a reverse order
+VarNameList :: { [String]  } 
+VarNameList : VarNameList ',' var { $3 : $1 }
+  | var { [$1] }
+
+-- Production rules for quantum states
+StQ :: { (L, StQ) }
+StQ : int { ([ ('q' : show(j-1), j) | j <- [1 .. $1]], toStQfromInt $1)  }
+  | '[' VarNameList ']' { toStQfromVar $2 }
+  | '[' L ']' ',' Doub '(' KetVec ')' { (reverse $2, scaleMatrix ($5 :+ 0.0) $7)  }
+  | '[' L ']' ',' StQs  { (reverse $2, $5) }
+  | {- empty -} {([], fromLists [[]])}
+
+StQs :: { StQ }
+StQs : StQs '+' Doub ket {sumMatrices $1 (scaleMatrix ($3 :+ 0.0) (toKetVec [$4]))}
+  | Doub ket {scaleMatrix ($1 :+ 0.0) (toKetVec [$2])}
+
+L :: { L }
+L : L ',' '(' var ',' int ')' { ($4, $6) : $1 }
+  | '(' var ',' int ')' { [($2, $4)] }
+  | {- empty -} { [] }
+
+KetVec :: { StQ }
+KetVec : KetVec '+' ket {sumMatrices $1 (toKetVec [$3])}
+  | ket {toKetVec [$1]}
+
+--Production rules for quantum gates
+Gates :: { G }
+Gates : "I" { I }
+  | "X" { X }
+  | "Y" { Y }
+  | "Z" { Z }
+  | "H" { H }
+  | "S" { S }
+  | "T" { T }
+  | "SWAP" { SWAP }
+  | "CNOT" { CNOT }
+  | "CZ" { CZ }
+  | "TOF" { TOF }
+  | "Ph" '(' AExp ')' { Ph $3 } -- the arguments are between parentheses 
+  | "CPh" '(' AExp ')' { CPh $3 } -- the arguments are between parentheses 
+  | udname { UD $1 } -- the arguments are between parentheses 
+
+
+--Production rules to allow to write integers as Doubles
+Doub :: { Double }
+Doub : doub { $1 }
+  | int { fromIntegral $1 }
+
+{
+--function that will be called whenever a parsing error occurs  
+parseError :: [Token] -> a
+parseError toks = error ("Parse error near: " ++ show (take 10 toks))
+
+--defining the Haskell data types used in the production rules above
+-- these data types represents the parsed expressions
+
+--declare the data type for the tokens
+data Token =
+  --Generic tokens
+  TokenDoub Double
+  | TokenVar String
+  | TokenKet String -- if this causes problem, move to the top
+  | TokenBra String -- if this causes problem, move to the top
+  | TokenInt Int 
+  | TokenOP
+  | TokenCP
+  | TokenOB
+  | TokenCB
+  | TokenOCB
+  | TokenCCB
+  | TokenComma
+  --File tokens
+  | TokenProgSep String
+  | TokenCS
+  | TokenQS
+  | TokenHist
+  | TokenKStep
+  --Commands tokens  
+  | TokenSkip
+  | TokenAss
+  | TokenSeq
+  | TokenPar
+  | TokenIf
+  | TokenElse
+  | TokenThen
+  | TokenWhile
+  | TokenDo
+  | TokenOr
+  | TokenReset
+  | TokenMeas
+  | TokenAwait
+  | TokenAtom
+  | TokenProbC
+  | TokenRational Rational
+  --Gates tokens
+  | TokenId
+  | TokenX
+  | TokenY
+  | TokenZ
+  | TokenH
+  | TokenS
+  | TokenT
+  | TokenSWAP
+  | TokenCNOT
+  | TokenCZ
+  | TokenTOF
+  | TokenPh
+  | TokenCPh
+  | TokenUD String
+  --AE tokens
+  | TokenPlus
+  | TokenMinus
+  | TokenMult
+  | TokenDiv
+  | TokenPi
+  | TokenSqrt
+  --BE tokens
+  | TokenTrue
+  | TokenFalse
+  | TokenAnd
+  | TokenOrBExp
+  | TokenNot
+  | TokenLess
+  | TokenGreat
+  | TokenLE
+  | TokenGE
+  | TokenEq
+  deriving Show
+  
+--Definition of a simple lexer that returns this data structure
+lexer :: String -> [Token]
+lexer [] = []
+lexer (':':'=':cs) = TokenAss : lexer cs
+lexer ('(':'+':')':cs) = TokenProbC : lexRational cs
+lexer ('<':'=':rest) = TokenLE : lexer rest
+lexer ('>':'=':rest) = TokenGE : lexer rest
+lexer ('=':'=':rest) = TokenEq : lexer rest
+lexer ('|':'|':rest) = TokenPar : lexer rest
+lexer ('h':'i':'s':'t':':':rest) = TokenHist : lexer rest
+lexer ('k':':':rest) = TokenKStep : lexer rest
+lexer ('c':'s':':':rest) = TokenCS : lexer rest
+lexer ('q':'s':':':rest) = TokenQS : lexer rest
+lexer ('-':'-':'-':cs) = case span isAlphaNum cs of
+                           (name, '-':'-':'-':rest) | not (null name) -> TokenProgSep name : lexer rest
+                           _ -> error ("The name of the file is not valid")
+lexer ('|':cs) =  case span isBit cs of
+                    (bs, '>':rest) | not (null bs) -> TokenKet bs : lexer rest
+                    _ -> error ("expecting ket like |010>, near: " ++ take 10 ('|':cs))
+lexer ('<':cs) =
+  case span isBit cs of
+    (bs, '|':rest) | not (null bs) -> TokenBra bs : lexer rest
+    _ -> TokenLess : lexer cs            -- normal '<' operator    
+lexer (c:cs)
+  | isSpace c = lexer cs
+  | isDigit c = lexNum (c:cs)
+  | isAlpha c = lexVar (c:cs)
+  | isSymbol c = lexSymbol (c:cs)
+  | isPunctuation c = lexPunct (c:cs)
+
+lexRational cs = let (_, rest1) = span (\c -> c == '(') cs
+                     (numrtor, rest2) = span isDigit rest1
+                     (symbol, rest3) = span (\c -> c == '%') rest2
+                     (denmtor, rest4) = span isDigit rest3
+                     (_, rest) = span (\c -> c == ')') rest4
+                 in TokenOP : TokenRational ((read numrtor) % (read denmtor)) : TokenCP : lexer rest
+
+lexSymbol :: String -> [Token]
+lexSymbol cs =
+  case cs of
+    ('+':rest)     -> TokenPlus     : lexer rest
+    ('~':rest)     -> TokenNot      : lexer rest
+    ('<':rest)     -> TokenLess     : lexer rest
+    ('>':rest)     -> TokenGreat    : lexer rest
+    _              -> error ("lexSymbol: unrecognized symbols near: " ++ take 10 cs)
+
+
+lexPunct cs =
+  case cs of
+    (';':rest) -> TokenSeq       : lexer rest
+    ('-':rest) -> TokenMinus     : lexer rest
+    ('*':rest) -> TokenMult      : lexer rest
+    ('/':rest) -> TokenDiv       : lexer rest
+    ('(':rest) -> TokenOP        : lexer rest
+    (')':rest) -> TokenCP        : lexer rest
+    ('[':rest) -> TokenOB        : lexer rest
+    (']':rest) -> TokenCB        : lexer rest
+    ('{':rest) -> TokenOCB       : lexer rest
+    ('}':rest) -> TokenCCB       : lexer rest
+    (',':rest) -> TokenComma : lexer rest
+    _          -> error ("lexPunct: unrecognized punct near: " ++ take 10 cs)
+
+
+lexNum cs = let (num, rest) = span isDigit cs
+            in if (null rest == False) && ((isDot $ head rest) == True)
+               then let (num2, rest2) = span isDigit (tail rest)
+                    in TokenDoub (read (num ++ "." ++ num2) :: Double) : lexer rest2
+               else TokenInt ((read num) :: Int) : lexer rest
+
+isDot :: Char -> Bool
+isDot ch = ch=='.'
+
+
+lexVar cs =
+   case span isAlphaNum cs of
+      ("skip", rest) -> TokenSkip : lexer rest
+      ("if", rest) -> TokenIf : lexer rest
+      ("then", rest) -> TokenThen : lexer rest
+      ("else", rest) -> TokenElse : lexer rest
+      ("while", rest) -> TokenWhile : lexer rest
+      ("do", rest) -> TokenDo : lexer rest
+      ("or", rest) -> TokenOr : lexer rest
+      ("tt", rest) -> TokenTrue : lexer rest
+      ("ff", rest) -> TokenFalse : lexer rest
+      ("AND", rest) -> TokenAnd : lexer rest
+      ("OR", rest) -> TokenOrBExp : lexer rest      
+      ("Reset", rest) -> TokenReset : lexer rest
+      ("Meas", rest) -> TokenMeas : lexer rest
+      ("await", rest) -> TokenAwait : lexer rest
+      ("atom", rest) -> TokenAtom : lexer rest
+      ("I", rest) -> TokenId : lexer rest
+      ("X", rest) -> TokenX : lexer rest
+      ("Y", rest) -> TokenY : lexer rest
+      ("Z", rest) -> TokenZ : lexer rest
+      ("H", rest) -> TokenH : lexer rest
+      ("S", rest) -> TokenS : lexer rest
+      ("T", rest) -> TokenT : lexer rest
+      ("SWAP", rest) -> TokenSWAP : lexer rest
+      ("CNOT", rest) -> TokenCNOT : lexer rest
+      ("CZ", rest) -> TokenCZ : lexer rest
+      ("TOF", rest) -> TokenTOF : lexer rest
+      ("Ph", rest) -> TokenPh : lexer rest
+      ("CPh", rest) -> TokenCPh : lexer rest
+      ("pi", rest) -> TokenPi : lexer rest
+      ("sqrt", rest) -> TokenSqrt : lexer rest
+      (var, rest) -> let h = head var
+                     in if (isAlpha h) == False
+                        then error ("lexerVar: Variable name should start with a lower char: " ++ var)
+                        else if (isLower h) == True
+                             then TokenVar var : lexer rest
+                             else TokenUD var : lexer rest
+      
+--function that creates a n-qubit quantum state initialised at zero from an int
+toStQfromInt :: Int -> StQ
+toStQfromInt n = stringToStQ ['0' | _ <- [1..n]]
+
+--function that creates a n-qubit quantum state initialised at zero from a list of variables
+toStQfromVar :: QVarList -> (L, StQ)
+toStQfromVar qvarlist = let n = length qvarlist
+                            qvar = reverse qvarlist
+                            l = zip qvar [i | i <- [1 .. n]]
+                            qst = toStQfromInt n
+                        in (l, qst)
+
+-- given a binary string, returns its associated density operator
+-- example: stringToSQ "01" returns a column vector corresponding to [0,1,0,0]
+stringToStQ :: String -> StQ
+stringToStQ s
+  | (length s == 1) = char01ToStQ $ head s
+  | (length s > 1) = tensorProduct $ map (\e -> char01ToStQ e) s
+  | otherwise = fromLists [[]]
+
+-- returns the vector |0> or |1> if the char is '0' or '1', respectively
+char01ToStQ :: Char -> StQ
+char01ToStQ c 
+  | c=='0' = fromLists [[1.0 :+ 00],[0.0 :+ 0.0]]
+  | c=='1' = fromLists [[0.0 :+ 00],[1.0 :+ 0.0]]
+
+
+--function that receives a char and verifies if it is a bit, i.e. a '0' or a '1'
+isBit :: Char -> Bool
+isBit ch = ch=='0' || ch=='1'
+
+--function that given ket's and bra's, both denoted as a list of strings, builds the corresponding
+--density operator
+toKetVec :: [String] -> StQ
+toKetVec ket = let ketSt = map stringToStQ ket
+                   (h,t) = (head ketSt, tail ketSt)
+               in foldr sumMatrices h t
+
+
+---Useful functions to manipulate quantum states---
+-- sumMatrices a b = sum of matrices a and b
+sumMatrices :: Op -> Op -> Op
+sumMatrices a b = let rows_a = nrows a
+                      rows_b = nrows b
+                  in if rows_a == rows_b
+                     then elementwise (+) a b
+                     else error "sumMatrices (QuantumCalc): the dimension of the matrices are not the same"
+
+-- subtMatrices a b = a - b, where a and b are matrices
+subtMatrices :: Op -> Op -> Op
+subtMatrices a b = elementwise (-) a b
+
+-- tensorProduct l = result of the tensor product between all elements of l (e.g tensorProduct [A,B,C] = A tensor B tensor C)
+tensorProduct :: [Op] -> Op
+tensorProduct [] = error "No matrices given for the calculation of their tensor product."
+tensorProduct [a] = error "Not enough matrices given for the calculation of their tensor product."
+tensorProduct [a,b] = fromLists (tensorProductLists (toLists a) (toLists b))
+tensorProduct (a:b:t) = tensorProduct [a, (tensorProduct (b:t)) ]
+
+-- (tensorProductLists a b) is the tensor product of a and b, if a and b correspond to matrices
+tensorProductLists :: [[Complex Double]] -> [[Complex Double]] -> [[Complex Double]]
+tensorProductLists a [] = []
+tensorProductLists [] b = []
+tensorProductLists (h:t) b = (map (getLineTensor h) b) ++ (tensorProductLists t b)
+
+-- getLineTensor [a1,...,an] b is the result of concatenating (multElemLine a1 b), ..., (multElemLine an b) 
+getLineTensor :: [Complex Double] -> [Complex Double] -> [Complex Double]
+getLineTensor [] l = []
+getLineTensor l [] = []
+getLineTensor (h:t) l = (multElemLine h l) ++ (getLineTensor t l)
+
+-- (multElemLine x l) is the list that results from multiplying every element of l by x
+multElemLine :: Complex Double -> [Complex Double] -> [Complex Double]
+multElemLine x [] = []
+multElemLine x (h:t) = xh : (multElemLine x t)
+    where (a,theta) = polar x
+          (b,phi) = polar h
+          xh = mkPolar (a*b) (theta + phi)
+
+
+-- function that takes some input, parses it and prints out the result
+-- testFile :: String -> [((String,Int,Int),(C,StC,L,StQ))]
+-- testFile s = file $ lexer s
+
+-- testProg :: String -> ((String,Int,Int),(C,StC,L,StQ))
+-- testProg s = prog $ lexer s
+
+testC :: String -> C
+testC s = com $ lexer s
+
+testAExp :: String -> AExp
+testAExp s = aexp $ lexer s
+
+testBExp :: String -> BExp
+testBExp s = bexp $ lexer s
+
+testStQ :: String -> (L, StQ)
+testStQ s = stq $ lexer s
+}
+
