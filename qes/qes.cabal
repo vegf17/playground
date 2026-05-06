@@ -85,7 +85,8 @@ executable qes
                       matrix,
                       containers,
                       old-time,
-                      random
+                      random,
+                      process
 
     build-tool-depends: happy:happy
     -- Directories containing source files.

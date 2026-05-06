@@ -153,6 +153,7 @@ C : skip { Skip }
   | Gates '[' VarNameList ']' {U $1 (reverse $3)} 
   | "Meas" '(' var ',' C ',' C ')' {Meas $3 $5 $7}
   | C ';' C { Seq $1 $3 }
+  | C "||" C { Par $1 $3 }
   | "while" var "do" '{' C '}' {Whl $2 $5}
   | '(' C ')' { $2 }
 

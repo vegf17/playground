@@ -72,7 +72,7 @@ data C = Skip
        | Meas QVar C C
        | Seq C C 
        | Whl QVar C
-       | EmptyC
+       | Par C C
        deriving (Show, Eq)
 
 
@@ -90,6 +90,8 @@ data Node = Block NodeId [CFGNot]
           | MeasBlock NodeId [CFGNot]
           | WhlBlock NodeId [CFGNot]
           | Empty NodeId
+          | Fork NodeId
+          | Join NodeId
           deriving (Show, Eq)
 
 data EdgeLabel = Uncond

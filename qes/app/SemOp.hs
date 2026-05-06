@@ -1,6 +1,5 @@
 module SemOp where
 
-import Syntax
 import Control.Monad.State
 import Control.Monad.Trans 
 import Control.Monad.Trans.Except
@@ -31,9 +30,129 @@ import QioMonad.QIO.Vec
 import QioMonad.QIO.VecEq
 import QioMonad.QIO.QArith
 
-type LL = [(QVar, Qbit)]
 
+import Syntax
+import Com
+
+type LL = [(QVar, Qbit)]
 type StQIO a = StateT LL (ExceptT (QIO ()) QIO) a
+
+-- given a concurrent program, it returns a sequential program based on a defined scheduling strategy 
+type Sch = C -> C
+
+
+initSch :: Sch
+initSch (Skip) = Skip
+initSch (Syntax.U g qvars) = Syntax.U g qvars
+initSch (Seq c1 c2) = let c1' = initSch c1
+                          c2' = initSch c2
+                      in Seq c1' c2'
+initSch (Par c1 c2) = let c1' = initSch c1
+                          c2' = initSch c2
+                      in Seq c1' c2'
+initSch (Syntax.Meas q c1 c2) = let c1' = initSch c1
+                                    c2' = initSch c2
+                                in Syntax.Meas q c1' c2'
+initSch (Whl q c) = let c' = initSch c
+                    in Whl q c'                       
+
+
+lastSch :: Sch
+lastSch (Skip) = Skip
+lastSch (Syntax.U g qvars) = Syntax.U g qvars
+lastSch (Seq c1 c2) = let c1' = lastSch c1
+                          c2' = lastSch c2
+                      in Seq c1' c2'
+lastSch (Par c1 c2) = let c1' = lastSch c1
+                          c2' = lastSch c2
+                      in Seq c2' c1'
+lastSch (Syntax.Meas q c1 c2) = let c1' = lastSch c1
+                                    c2' = lastSch c2
+                                in Syntax.Meas q c1' c2'
+lastSch (Whl q c) = let c' = lastSch c
+                    in Whl q c'                       
+
+-- this definition has a problem with programs that demand the verification of "Boolean conditions",
+-- e.g.: Meas(q, sk, X[q]) || H[q]
+fairSch :: Int -> Sch
+fairSch _ Skip = Skip
+fairSch _ (Syntax.U g qvars) = Syntax.U g qvars
+fairSch n (Seq c1 c2) = let c1' = fairSch n c1
+                            c2' = fairSch n c2
+                        in Seq c1' c2'
+fairSch n c@(Par c1 c2) = let n_par = howManyParC c
+                              i = mod n n_par
+                              list_c = parC c
+                              sel_c = list_c!!i
+                              (sel_inst, rest_c) = pickInst sel_c
+                              list_c' = updList list_c sel_c rest_c
+                              upd_parC = toParC list_c'
+                          in Seq sel_inst (fairSch (n+1) upd_parC)
+fairSch n (Syntax.Meas q c1 c2) = let c1' = fairSch n c1
+                                      c2' = fairSch n c2
+                                  in Syntax.Meas q c1' c2'
+fairSch n (Whl q c) = let c' = fairSch n c
+                      in Whl q c'
+
+
+updList :: [C] -> C -> Maybe C -> [C]
+updList [] _ _ = []
+updList (h:t) sel_c rest_c = if h==sel_c
+                             then case rest_c of
+                                    Nothing -> t
+                                    Just c' -> c':t
+                             else h : updList t sel_c rest_c
+
+--given a non-concurrent command, returns the first instruction and the remainder
+pickInst :: C -> (C, Maybe C)
+pickInst (Seq c1 c2) = let (inst, rest) = pickInst c1
+                       in case rest of
+                            Nothing -> (inst, Just c2)
+                            Just c1' -> (inst, Just $ Seq c1' c2)
+pickInst c = (c, Nothing)                            
+
+--given a list of programs that were composed concurrently, compose the programs concurrently
+toParC :: [C] -> C
+toParC (c:[]) = c
+toParC (h:t) = Par h (toParC t)
+
+--creates a list of the programs that are composed concurrently
+parC :: C -> [C]
+parC (Par c1 c2) = let has_par_c1 = hasPar c1
+                       has_par_c2 = hasPar c2
+                   in if has_par_c1 == False
+                      then c1 : parC c2
+                      else if has_par_c2 == False
+                           then let l1 = parC c1
+                                in l1 ++ [c2]
+                           else let l1 = parC c1
+                                    l2 = parC c2
+                                in l1++l2
+parC c = [c]
+                         
+
+--given a list of programs composed concurrently, returns the n-th program
+getC :: [C] -> Int -> Maybe C
+getC [] _ = Nothing
+getC (h:t) n = if n==1 then Just h else getC t (n-1)
+
+
+hasPar :: C -> Bool
+hasPar Skip = False
+hasPar (Syntax.U _ _) = False
+hasPar (Seq c1 c2) = hasPar c1 || hasPar c2
+hasPar (Par c1 c2) = True
+hasPar (Syntax.Meas q c1 c2) = hasPar c1 || hasPar c2
+hasPar (Whl q c) = hasPar c
+
+-- counts the number of programs concurrently composed
+howManyParC :: C -> Int
+howManyParC Skip = 0
+howManyParC (Syntax.U _ _) = 0
+howManyParC (Seq c1 c2) = howManyParC c1 + howManyParC c2
+howManyParC (Par c1 c2) = howManyParC c1 + howManyParC c2 + 2
+howManyParC (Syntax.Meas _ c1 c2) = howManyParC c1 + howManyParC c2
+howManyParC (Whl _ c) = howManyParC c
 
 
 small :: C -> LL -> QIO (Either U ((C,LL),U))
@@ -44,8 +163,8 @@ small (Syntax.Meas qvar c1 c2) l = do
   let q = snd $ head $ filter (\(qq,_) -> qq==qvar) l
   meas <- measQ q -- Bool
   case meas of
-    True -> return $ Right ((c1,l), mempty) -- True = |1>
-    False -> return $ Right ((c2,l), mempty) -- False = |0>
+    False -> return $ Right ((c1,l), mempty) -- False = |0>
+    True -> return $ Right ((c2,l), mempty) -- True = |1>
 small (Seq c1 c2) l = do
   eval_c1 <- small c1 l
   case eval_c1  of

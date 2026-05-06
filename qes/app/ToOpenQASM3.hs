@@ -1,6 +1,7 @@
 module ToOpenQASM3 where
 
 import Data.List
+import Data.Maybe
 
 import Syntax
 import Com
@@ -12,6 +13,11 @@ It is assumed that:
   2) The number of such node is always 0
   3) The CFG is not empty
   4) There are no empty nodes
+
+Concurrent programs are flattened and interpreted inside a box together with a barrier at the end
+with all the variables that were used inside the box;
+Concurrent programs are disjoint (such condition is verified when running test_toOpenQASM3, which is
+the function used convert a program to OpenQASM3);
 -}
 
 
@@ -67,6 +73,31 @@ fromNode n g eds (WhlBlock nid list_cfg) next_trav vars =
       end_text = fromListCFGNot (n + 1) (-1) list_cfg vars ++ line n "}"
       upd_trav = filter (`notElem` true_trav) next_trav
   in (init_text ++ body_text ++ end_text, upd_trav)
+fromNode n g eds (Fork nid) next_trav vars =
+  let init_text = line n "box {"
+      (par_trav,forks_joins) = parTrav g eds nid
+      body_text = printG (n + 1) g eds par_trav vars
+      par_qvars = qVarsTrav g par_trav
+      str_qvars = qvarsToString par_qvars
+      close_braket = line n "}"
+      end_text = if null par_qvars then "" else line n ("barrier " ++ str_qvars ++ ";")
+      upd_trav = filter (`notElem` (par_trav++forks_joins)) next_trav
+  in (init_text ++ body_text ++ close_braket ++ end_text, upd_trav)
+fromNode n g eds (Join nid) next_trav vars = ("", next_trav) 
+
+parTrav :: Graph -> Edges -> NodeId -> ([NodeId], [NodeId])
+parTrav g eds nid = let next_eds = [n_out | (n_in, _, n_out) <- eds, n_in==nid] -- this should only contain two elements
+                        left_node = head next_eds
+                        right_node = last next_eds
+                        merge_join = fromJust $ findMergingNode eds left_node right_node --there's a merge join, hence it is Just value
+                        par_trav = tail $ traverseNids eds nid merge_join
+                        forks_joins = filter isForkJoinBlock $ map (\n -> getNode g n) par_trav
+                        forks_joins_nid = map getNodeId forks_joins
+                        trav = filter (`notElem` forks_joins_nid) par_trav
+                    in (trav, forks_joins_nid)
+
+qVarsTrav :: Graph -> [NodeId] -> QVarList
+qVarsTrav g l_nid = nub $ concat $ map (\n -> retrieveqVar n) $ concat $ map (\n -> retrieveListCFGNot (getNode g n)) l_nid
 
 indent :: Int -> String
 indent n = replicate (2 * n) ' '
@@ -208,6 +239,8 @@ collectVarsAux g (h:t) i_cvar vars = case getNode g h of
                                  not_in_vars = filter (`notElem` qvars) qvars_nid
                                  upd_vars = [(qvar, "") | qvar <- not_in_vars] ++ vars
                              in collectVarsAux g t i_cvar upd_vars
+  (Fork _) -> collectVarsAux g t i_cvar vars
+  (Join _) -> collectVarsAux g t i_cvar vars
   node ->  let (h_vars, h_i_cvar) = createCVar node i_cvar vars
            in collectVarsAux g t h_i_cvar h_vars
 
@@ -225,6 +258,7 @@ retrieveListCFGNot :: Node -> [CFGNot]
 retrieveListCFGNot (Block _ l) = l
 retrieveListCFGNot (MeasBlock _ l) = l
 retrieveListCFGNot (WhlBlock _ l) = l
+retrieveListCFGNot _ = []
                                           
 retrieveqVar :: CFGNot -> QVarList
 retrieveqVar SSkip = []
@@ -236,6 +270,11 @@ isMeasWhlBlock :: Node -> Bool
 isMeasWhlBlock (MeasBlock _ _) = True
 isMeasWhlBlock (WhlBlock _ _) = True
 isMeasWhlBlock _ = False
+
+isForkJoinBlock :: Node -> Bool
+isForkJoinBlock (Fork _) = True
+isForkJoinBlock (Join _) = True
+isForkJoinBlock _ = False
 
 -- g -> eds -> current_node -> visited_nodes
 traverseG :: Graph -> Edges -> NodeId -> [NodeId]
@@ -261,6 +300,8 @@ getNodeId (Block nid _) = nid
 getNodeId (MeasBlock nid _) = nid
 getNodeId (WhlBlock nid _ ) = nid
 getNodeId (Empty nid) = nid
+getNodeId (Fork nid) = nid
+getNodeId (Join nid) = nid
 
 
 --- Test functions
@@ -283,7 +324,12 @@ test_com = [
   "H[q1]; while q1 do {H[q2]; H[q1]}; Meas(q2, skip, X[q2])",
   "Meas(q, while q do {skip}; skip, Meas(q, X[q], Z[q]); skip); H[q]",
   "while q do {skip}; while q do {H[q]}",
-  "while q1 do {H[q2]; while q2 do {skip}}"
+  "while q1 do {H[q2]; while q2 do {skip}}",
+  "skip || skip",
+  "H[q] || H[q]",
+  "H[q]; (X[q] || skip)",
+  "H[q0] || H[q1] || H[q2]",
+  "H[q];H[q1]; (while q do {H[q]} || Meas(q1, X[q2], Z[q2])); skip"
            ]
 
 test_func :: (String -> IO ()) -> IO ()
@@ -302,10 +348,14 @@ test_func_aux f (h:t) = do
 test_toOpenQASM3 :: String -> IO ()
 test_toOpenQASM3 s = do
   let c = testC s
-      (g, eds, entry, exit, next) = toCFG c 0
-      (g', eds') = rmvEmptyNode (g, eds)
-  --putStrLn $ drawCFG g' eds'
-  toOpenQASM3 g' eds'
+  case isDisjoint c of
+    True -> do
+      let (g, eds, entry, exit, next) = toCFG c 0
+          (g', eds') = rmvEmptyNode (g, eds)
+      putStrLn $ drawCFG g' eds'
+      --dotCFG g' eds'
+      toOpenQASM3 g' eds'
+    False -> putStrLn "The command is not disjoint"
 
 test_collectVars :: String -> IO ()
 test_collectVars s = do
