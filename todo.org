@@ -1,6 +1,6 @@
 #+TITLE: To Do List
 
-* Tasks [1/3]
+* Tasks [2/3]
 :PROPERTIES:
 :COOKIE_DATA: todo
 :END:
@@ -30,14 +30,14 @@ DEADLINE: <2026-05-01 Fri>
 *** DONE CFG (with cycles)
 *** DONE To OpenQasm
 
-** TODO Quantum Concurrent Language [0/5]
+** DONE Quantum Concurrent Language [5/5]
 DEADLINE: <2026-05-05 Tue>
 :PROPERTIES:
 :LANGUAGE: C ::= sk | U[q] | M(q, C, C) | C;C | while M(q) do C | C||C
 :END:
 
-*** TODO Grammar
-*** TODO Scheduler to eliminate non-determinism
-*** TODO CFG (without cycles)
-*** TODO CFG (with cycles)
-*** TODO To OpenQasm
+*** DONE Grammar
+*** DONE Scheduler to eliminate non-determinism
+*** DONE CFG (without cycles)
+*** DONE CFG (with cycles)
+*** DONE To OpenQasm
