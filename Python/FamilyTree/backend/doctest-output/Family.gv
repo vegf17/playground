@@ -1,0 +1,12 @@
+// Family
+digraph {
+	p0 [label=Dad]
+	p1 [label=Mom]
+	p2 [label=Son1]
+	p3 [label=Son2]
+	inv1 [shape=point]
+	p0 -> inv1
+	p1 -> inv1
+	inv1 -> p2
+	inv1 -> p3
+}

@@ -1,0 +1,8 @@
+// Family 3
+digraph {
+	p0 [label=Antonio]
+	p1 [label=Maria]
+	inv1 [shape=point]
+	p0 -> inv1
+	p1 -> inv1
+}
