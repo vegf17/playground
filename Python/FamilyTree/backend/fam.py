@@ -56,6 +56,59 @@ def add_new_member(family, person):
     return family
 
 
+#Updates the information of a given person
+def upd_member_info(family,
+                    person_id,
+                    name,
+                    birth,
+                    death,
+                    blood_type,
+                    diseases,
+                    clinical_history,
+                    father,
+                    mother,
+                    partner
+                    ):
+    p = get_member(family, person_id)
+    p.name = name
+    p.birth = birth
+    p.death = death
+    p.health_info["blood_type"] = blood_type
+    p.health_info["diseases"] = diseases
+    p.health_info["clinical_history"] = clinical_history
+    p.father = father
+    p.mother = mother
+    p.partner = partner
+
+    upd_family_relations(family, p)
+    
+    return family
+
+#given a family and a person identifier, returns the respective person
+def get_member(family, person_id):
+    for p in family.fam:
+        if p.identifier==person_id:
+            return p
+    print(f"There is no person with the identifier: {person_id}")
+
+
+#given a fmaily and a person identifier, checks if the person exists
+def is_member(family, person_id):
+    for p in family.fam:
+        if p.identifier==person_id:
+            return True
+    return False
+
+def find_index_by_id(options, person):
+    if person is None:
+        return None
+
+    for i, candidate in enumerate(options):
+        if candidate.identifier == person.identifier:
+            return i
+
+    return None
+
 # this function has the goal to update the fields, given a family and a new member:
 # partner for father and mother (if both exist)
 # kids for father and mother (if both exist)
@@ -65,12 +118,14 @@ def upd_family_relations(family, person):
         if person.father.partner is None and person.mother.partner is None:
             person.father.partner = person.mother
             person.mother.partner = person.father
-        person.father.kids.append(person)
-        person.mother.kids.append(person)
+        if person not in person.father.kids:
+            person.father.kids.append(person)
+        if person not in person.mother.kids:
+            person.mother.kids.append(person)
         for s in person.father.kids: #at this point, we are assuming that father and mother have the
                                      #same kids (this entails that a person can only have one
                                      #partner)
-            if s is not person:
+            if s is not person and s not in person.siblings:
                 person.siblings.append(s)
                 s.siblings.append(person)
 
@@ -142,26 +197,26 @@ def family_from_dict(data):
     # Second pass: reconnect relationships
     for p_data in people_data:
         p = people_by_id[p_data["identifier"]]
-
         if p_data["father"] is not None:
             p.father = people_by_id[p_data["father"]]
-
         if p_data["mother"] is not None:
             p.mother = people_by_id[p_data["mother"]]
-
         if p_data["partner"] is not None:
             p.partner = people_by_id[p_data["partner"]]
-
         p.siblings = [
             people_by_id[sibling_id]
             for sibling_id in p_data["siblings"]
         ]
-
         p.kids = [
             people_by_id[kid_id]
             for kid_id in p_data["kids"]
         ]
-
     family.fam = list(people_by_id.values())
 
     return family
+
+
+
+
+
+    

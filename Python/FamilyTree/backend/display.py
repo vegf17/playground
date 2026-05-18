@@ -1,6 +1,6 @@
 import streamlit as st
 from person import Person, Family
-from fam import init_family, add_new_member, save_family, load_family, family_from_dict, delete_member, reset_family, upd_family_relations
+from fam import *
 from pathlib import Path
 
 DATA_DIR = Path("./data/families")
@@ -20,6 +20,9 @@ def go_to_select_family():
 
 def go_to_add_member():
     st.session_state.page = "add_member"
+
+def go_to_upd_member():
+    st.session_state.page = "upd_member"    
 
 def go_to_rmv_member():
     st.session_state.page = "rmv_member"
@@ -49,10 +52,43 @@ def submit_member():
         partner=st.session_state.get("partner"),
         kids=None #st.session_state["kids"] if st.session_state["kids"] != "" else None
     )
+    
     add_new_member(st.session_state.family, p)
     upd_family_relations(st.session_state.family, p) #update of the family (connect partners and siblings)
     save_family(st.session_state.family)
 
+
+def submit_upd_member():
+    p = Person(
+        name=st.session_state["name"],
+        birth=st.session_state["birth"],
+        death=st.session_state["death"],
+        blood_type="", #st.session_state["blood_type"],
+        diseases=None, #st.session_state["diseases"],
+        clinical_history=None,
+        father=st.session_state.get("father"),
+        mother=st.session_state.get("mother"),
+        siblings=None, #st.session_state["siblings"] if st.session_state["siblings"] != "" else None,
+        partner=st.session_state.get("partner"),
+        kids=None #st.session_state["kids"] if st.session_state["kids"] != "" else None
+    )
+    if is_member(st.session_state.family, st.session_state.person_select.identifier)==True:
+        upd_member_info(st.session_state.family,
+                        st.session_state.person_select.identifier,
+                        p.name,
+                        p.birth,
+                        p.death,
+                        p.health_info["blood_type"],
+                        p.health_info["diseases"],
+                        p.health_info["clinical_history"],
+                        p.father,
+                        p.mother,
+                        p.partner
+                        )
+    else:
+        st.write("It was not possible to update the information of %s (%s)"%(p.name, st.session_state.person_select.identifier) )
+    save_family(st.session_state.family)
+    
 
 def remove_member():
     family = st.session_state.family
@@ -94,6 +130,56 @@ def add_member_form():
 
         st.form_submit_button("Done", on_click=submit_member)
 
+
+def upd_member_form():
+    #st.write(st.session_state)
+    name_fam = st.session_state.family.fam_name
+    p = st.selectbox(
+        "Select the person to update the information",
+        options=st.session_state.family.fam,
+        index=None,
+        key="person_select",
+        format_func=lambda p: f"{p.name} ({p.identifier})"
+    )
+    if p is not None:
+        with st.form("upd_member", clear_on_submit=True):
+            st.write("Update %s (%s) from the family %s" %(p.name, p.identifier, name_fam))
+            st.text_input("Name:", key="name", placeholder=p.name, value=p.name)
+            st.text_input("Birthday:", key="birth", placeholder=p.birth, value=p.birth)
+            st.text_input("Death:", key="death", placeholder=p.death, value=p.death)
+            
+            with st.expander("Family"):
+                family_members = st.session_state.family.fam
+                
+                father_info= st.selectbox(
+                    "Select your father",
+                    options=family_members,
+                    index=find_index_by_id(family_members, p.father),
+                    placeholder=p.father.name + " (" + p.father.identifier + ")" if p.father is not None else "No father",
+                    key="father",
+                    format_func=lambda p: f"{p.name} ({p.identifier})"
+                )
+                mother_info= st.selectbox(
+                    "Select your mother",
+                    options=family_members,
+                    index=find_index_by_id(family_members, p.mother),
+                    placeholder=p.mother.name + " (" + p.mother.identifier + ")" if p.mother is not None else "No mother",
+                    key="mother",
+                    format_func=lambda p: f"{p.name} ({p.identifier})"
+                )
+                partner_info= st.selectbox(
+                    "Select your partner",
+                    options=family_members,
+                    index=find_index_by_id(family_members, p.partner),
+                    placeholder=p.partner.name + " (" + p.partner.identifier + ")" if p.partner is not None else "No partner",
+                    key="partner",
+                    format_func=lambda p: f"{p.name} ({p.identifier})"
+                )
+
+            st.form_submit_button("Done", on_click=submit_upd_member)
+
+
+        
 
 def rmv_member_form():
     name_fam = st.session_state.family.fam_name
@@ -219,6 +305,8 @@ elif st.session_state.page == "del_family":
     delete_family()    
 elif st.session_state.page == "add_member":
     add_member_form()
+elif st.session_state.page == "upd_member":
+    upd_member_form()    
 elif st.session_state.page == "rmv_member":
     rmv_member_form()    
 elif st.session_state.page == "family_tree":
@@ -235,10 +323,7 @@ st.sidebar.button("Add Family", on_click=go_to_add_family, key="add_family_butto
 st.sidebar.button("Delete Family", on_click=go_to_del_family)
 st.sidebar.button("See Family tree", on_click=go_to_family_tree)
 st.sidebar.button("Add member", on_click=go_to_add_member)
+st.sidebar.button("Update member", on_click=go_to_upd_member)
 st.sidebar.button("Remove member", on_click=go_to_rmv_member)
 st.sidebar.button("Home Page", on_click=go_to_home_page)    
-
-
-#family tree drawing
-
 
