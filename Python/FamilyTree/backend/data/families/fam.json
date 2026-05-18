@@ -1,11 +1,11 @@
 {
     "fam_name": "fam",
     "count": 0,
-    "count_id": 6,
+    "count_id": 5,
     "fam": [
         {
             "identifier": "p0",
-            "name": "d1",
+            "name": "d",
             "birth": "1",
             "death": "",
             "health_info": {
@@ -19,12 +19,12 @@
             "partner": "p1",
             "kids": [
                 "p2",
-                "p5"
+                "p3"
             ]
         },
         {
             "identifier": "p1",
-            "name": "m1",
+            "name": "m",
             "birth": "1",
             "death": "",
             "health_info": {
@@ -32,13 +32,13 @@
                 "diseases": [],
                 "clinical_history": []
             },
-            "father": "p0",
+            "father": null,
             "mother": null,
             "siblings": [],
             "partner": "p0",
             "kids": [
                 "p2",
-                "p5"
+                "p3"
             ]
         },
         {
@@ -54,9 +54,27 @@
             "father": "p0",
             "mother": "p1",
             "siblings": [
-                "p5"
+                "p3"
             ],
             "partner": "p4",
+            "kids": []
+        },
+        {
+            "identifier": "p3",
+            "name": "s2",
+            "birth": "2",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": "p0",
+            "mother": "p1",
+            "siblings": [
+                "p2"
+            ],
+            "partner": null,
             "kids": []
         },
         {
@@ -73,24 +91,6 @@
             "mother": null,
             "siblings": [],
             "partner": "p2",
-            "kids": []
-        },
-        {
-            "identifier": "p5",
-            "name": "toni",
-            "birth": "2",
-            "death": "",
-            "health_info": {
-                "blood_type": "",
-                "diseases": [],
-                "clinical_history": []
-            },
-            "father": "p0",
-            "mother": "p1",
-            "siblings": [
-                "p2"
-            ],
-            "partner": null,
             "kids": []
         }
     ]

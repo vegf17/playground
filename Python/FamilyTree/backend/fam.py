@@ -104,7 +104,7 @@ def find_index_by_id(options, person):
         return None
 
     for i, candidate in enumerate(options):
-        if candidate.identifier == person.identifier:
+        if candidate is not None and candidate.identifier == person.identifier:
             return i
 
     return None
@@ -114,6 +114,12 @@ def find_index_by_id(options, person):
 # kids for father and mother (if both exist)
 # siblings (if they exist)
 def upd_family_relations(family, person):
+    #update partner
+    if person.partner is not None:
+        if person.partner.partner is None:
+            person.partner.partner = person
+
+    #update parents, siblings, and kidsg
     if person.father is not None and person.mother is not None:
         if person.father.partner is None and person.mother.partner is None:
             person.father.partner = person.mother

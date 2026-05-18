@@ -134,12 +134,14 @@ def add_member_form():
 def upd_member_form():
     #st.write(st.session_state)
     name_fam = st.session_state.family.fam_name
+    fam_members = st.session_state.family.fam
+    family_members=fam_members + [None]
     p = st.selectbox(
         "Select the person to update the information",
         options=st.session_state.family.fam,
         index=None,
         key="person_select",
-        format_func=lambda p: f"{p.name} ({p.identifier})"
+        format_func=lambda p: f"{p.name} ({p.identifier})" if p is not None else "None"
     )
     if p is not None:
         with st.form("upd_member", clear_on_submit=True):
@@ -149,7 +151,6 @@ def upd_member_form():
             st.text_input("Death:", key="death", placeholder=p.death, value=p.death)
             
             with st.expander("Family"):
-                family_members = st.session_state.family.fam
                 
                 father_info= st.selectbox(
                     "Select your father",
@@ -157,7 +158,7 @@ def upd_member_form():
                     index=find_index_by_id(family_members, p.father),
                     placeholder=p.father.name + " (" + p.father.identifier + ")" if p.father is not None else "No father",
                     key="father",
-                    format_func=lambda p: f"{p.name} ({p.identifier})"
+                    format_func=lambda p: f"{p.name} ({p.identifier})" if p is not None else "None"
                 )
                 mother_info= st.selectbox(
                     "Select your mother",
@@ -165,7 +166,7 @@ def upd_member_form():
                     index=find_index_by_id(family_members, p.mother),
                     placeholder=p.mother.name + " (" + p.mother.identifier + ")" if p.mother is not None else "No mother",
                     key="mother",
-                    format_func=lambda p: f"{p.name} ({p.identifier})"
+                    format_func=lambda p: f"{p.name} ({p.identifier})" if p is not None else "None"
                 )
                 partner_info= st.selectbox(
                     "Select your partner",
@@ -173,7 +174,7 @@ def upd_member_form():
                     index=find_index_by_id(family_members, p.partner),
                     placeholder=p.partner.name + " (" + p.partner.identifier + ")" if p.partner is not None else "No partner",
                     key="partner",
-                    format_func=lambda p: f"{p.name} ({p.identifier})"
+                    format_func=lambda p: f"{p.name} ({p.identifier})" if p is not None else "None"
                 )
 
             st.form_submit_button("Done", on_click=submit_upd_member)
