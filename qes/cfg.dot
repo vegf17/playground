@@ -1,0 +1,15 @@
+digraph CFG {
+  rankdir=TB;
+  node [fontname="Courier", shape=box];
+  edge [fontname="Courier"];
+
+  0 [label="Fork 0", shape=diamond];
+  1 [label="Block 1\nskip", shape=box, style="rounded"];
+  2 [label="Block 2\nskip", shape=box, style="rounded"];
+  3 [label="Join 3", shape=diamond];
+
+  0 -> 1;
+  0 -> 2;
+  1 -> 3;
+  2 -> 3;
+}

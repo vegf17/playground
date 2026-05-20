@@ -1,0 +1,118 @@
+{
+    "fam_name": "fam",
+    "family_id": "f3",
+    "count": 0,
+    "count_id": 7,
+    "fam": [
+        {
+            "identifier": "p0",
+            "name": "d",
+            "birth": "1",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partner": "p1",
+            "kids": [
+                "p2",
+                "p6"
+            ]
+        },
+        {
+            "identifier": "p1",
+            "name": "m",
+            "birth": "1",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partner": "p0",
+            "kids": [
+                "p2",
+                "p6"
+            ]
+        },
+        {
+            "identifier": "p2",
+            "name": "s1",
+            "birth": "2",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": "p0",
+            "mother": "p1",
+            "siblings": [
+                "p6"
+            ],
+            "partner": "p4",
+            "kids": [
+                "p5"
+            ]
+        },
+        {
+            "identifier": "p4",
+            "name": "p1",
+            "birth": "2",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partner": "p2",
+            "kids": [
+                "p5"
+            ]
+        },
+        {
+            "identifier": "p5",
+            "name": "s11",
+            "birth": "3",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": "p2",
+            "mother": "p4",
+            "siblings": [],
+            "partner": null,
+            "kids": []
+        },
+        {
+            "identifier": "p6",
+            "name": "s2",
+            "birth": "2",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": "p0",
+            "mother": "p1",
+            "siblings": [
+                "p2"
+            ],
+            "partner": null,
+            "kids": []
+        }
+    ]
+}
