@@ -94,10 +94,13 @@ for p in fam3_list:
     add_new_member(fam3,p)
     
 print(fam3.toJSON())
-fam3=load_family("Family 3")
+fam3=load_family("Family 3", fam3.family_id)
 fam3.printFamily()
-fam3.showGraph()
+# fam3.showGraph()
 
+
+#delete_member(fam3, pp2)
+#delete_family_folder(fam3)
 
 # family=load_family("family")
 # family.printFamily()

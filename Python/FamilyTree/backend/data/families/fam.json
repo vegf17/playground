@@ -1,7 +1,7 @@
 {
     "fam_name": "fam",
     "count": 0,
-    "count_id": 5,
+    "count_id": 6,
     "fam": [
         {
             "identifier": "p0",
@@ -56,7 +56,7 @@
             "siblings": [
                 "p3"
             ],
-            "partner": "p4",
+            "partner": "p5",
             "kids": []
         },
         {
@@ -78,7 +78,7 @@
             "kids": []
         },
         {
-            "identifier": "p4",
+            "identifier": "p5",
             "name": "p1",
             "birth": "2",
             "death": "",
