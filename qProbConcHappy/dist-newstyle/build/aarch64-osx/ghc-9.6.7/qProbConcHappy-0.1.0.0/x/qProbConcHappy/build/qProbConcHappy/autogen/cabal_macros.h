@@ -131,15 +131,15 @@
   (major1) == 0 && (major2) == 6 && (minor) <= 1)
 #endif /* MIN_VERSION_transformers */
 
-/* tool gcc-17.0.0 */
+/* tool gcc-21.0.0 */
 #ifndef TOOL_VERSION_gcc
-#define TOOL_VERSION_gcc "17.0.0"
+#define TOOL_VERSION_gcc "21.0.0"
 #endif /* TOOL_VERSION_gcc */
 #ifndef MIN_TOOL_VERSION_gcc
 #define MIN_TOOL_VERSION_gcc(major1,major2,minor) (\
-  (major1) <  17 || \
-  (major1) == 17 && (major2) <  0 || \
-  (major1) == 17 && (major2) == 0 && (minor) <= 0)
+  (major1) <  21 || \
+  (major1) == 21 && (major2) <  0 || \
+  (major1) == 21 && (major2) == 0 && (minor) <= 0)
 #endif /* MIN_TOOL_VERSION_gcc */
 /* tool ghc-9.6.7 */
 #ifndef TOOL_VERSION_ghc
