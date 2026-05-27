@@ -4,35 +4,29 @@ import json
 class Family:
     def __init__(self,
                  fam_name="",
-                 fam_graph=None,
+                 #fam_graph=None,
                  fam=None,
                  count=0,
                  edges=None,
-                 count_id=0):
+                 count_id=0,
+                 family_id=None):
         self.fam_name = fam_name
-        self.fam_graph = gvz.Digraph(comment=fam_name)
+        #self.fam_graph = gvz.Digraph(comment=fam_name)
         self.fam = fam if fam is not None else []
         self.count = count #current couples in the family
         self.edges = edges if edges is not None else []
         self.count_id = count_id #next number for the identifier
-    
+        self.family_id = family_id #family identifier (useful to create folders)
     
     def printFamily(self):
         print("Family: " + self.fam_name + "\n")
         for p in self.fam:
             p.printPerson()
 
-    def showGraph(self):
-        create_graph_fam(self.fam_graph, [], self.fam, 0)
-        self.fam_graph.render("doctest-output/"+self.fam_name+".gv", view=True)
-
-    def showGraphSt(self):
-        self.fam_graph = gvz.Digraph(comment=self.fam_name)
-        create_graph_fam(self.fam_graph, [], self.fam, 0)
-
     def create_dict(self):
         return {
             "fam_name" : self.fam_name,
+            "family_id" : self.family_id,
             "count": self.count,
             "count_id": self.count_id,
             "fam" : [person_to_dict(self.fam, p) for p in self.fam]
@@ -70,7 +64,7 @@ class Person:
         self.siblings = siblings if siblings is not None else []
         self.partner = partner
         self.kids = kids if kids is not None else []
-        self.identifier = None
+        self.identifier = identifier
 
     def printPerson(self):
         print("Name: %s" % self.name)
@@ -107,98 +101,6 @@ class Person:
                     print("\t%s" % p)
         print("\n")
     
-        
-def create_graph_fam(fam_graph, edges, fam, count):
-    """
-    fam_graph: DiGraph
-    edges: [(node_id, node_id)]
-    fam: [Person]
-    count: int
-    """
-    fam_graph = node_fam(fam_graph, fam) #nodes
-    fam_graph, edges, count = edge_fam(fam_graph, edges, fam, count) #edges
-
-    return fam_graph, edges, count
-
-def node_fam(fam_graph, fam):
-    """
-    fam_graph: Digraph 
-    fam: list of Person; [Person]
-    """
-    for person in fam:
-        fam_graph.node(person.identifier, person.name)
-
-    return fam_graph
-
-
-def edge_fam(fam_graph, edges, fam, i):
-    """
-    fam_graph: Digraph
-    edges: [(node_id, node_id)]
-    fam: list of Person; [Person]
-    i: Int (for naming possible invisible nodes)
-    """
-    for person in fam:
-        person_id = person.identifier
-        edges_fst = [x for (x,y) in edges]
-        edges_snd = [y for (x,y) in edges]
-
-        if person.partner is not None and person.partner in fam:
-            partner_id = person.partner.identifier #f"{fam.index(person.partner)}"
-            if (partner_id in edges_fst) or (partner_id in edges_snd):
-                pass
-            else:
-                (i, edges) = add_invisible_node(fam_graph, fam, person, person.partner, i+1, edges)        
-        if person.father is not None and person.mother is not None and person.father in fam and person.mother in fam:
-            father_id = person.father.identifier #f"{fam.index(person.father)}"
-            mother_id = person.mother.identifier #f"{fam.index(person.mother)}"
-            if is_pair_with_inv_node(father_id, edges)==False:
-                (i, edges) = add_invisible_node(fam_graph, fam, person.father, person.mother, i+1, edges)
-            inv_node_id = get_inv_node_id(father_id, edges)
-            fam_graph.edge(inv_node_id, person_id)
-            edges.append((inv_node_id, person_id))
-
-    return fam_graph, edges, i
-
-def get_inv_node_id(n_id, edges):
-    """
-    n_id: id of the n-th node
-    edges: list of edges
-    """
-    for (x,y) in edges:
-        if x==n_id: #inv nodes are always on the RHS of an edge
-            return y    
-
-def is_pair_with_inv_node(n_id, edges):
-    """
-    n_id: id of the n-th node
-    edges: list of edges
-    """
-    for (x,y) in edges:
-        if x==n_id: #inv nodes are always on the RHS of an edge
-            return "inv" in y
-
-    return False
-
-def add_invisible_node(fam_graph, fam, person, person_partner, i, edges):
-    """
-    fam_graph: Digraph
-    fam: [Person]
-    person, person_partner: Person
-    i: int (used to name invisible nodes)
-    edges: list of edges
-    """
-    inv_id = "inv"+f"{i}"
-    person_id = person.identifier #f"{fam.index(person)}"
-    partner_id = person_partner.identifier #f"{fam.index(person_partner)}"
-    fam_graph.node(inv_id, shape="point")
-    fam_graph.edge(person_id, inv_id)
-    fam_graph.edge(partner_id, inv_id)
-    edges.append((person_id, inv_id))
-    edges.append((partner_id, inv_id))
-
-    return (i, edges)
-        
 
 def person_to_dict(fam, p):
     """
@@ -219,3 +121,5 @@ def person_to_dict(fam, p):
     }
 
     
+
+

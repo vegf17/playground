@@ -1,0 +1,60 @@
+{
+    "fam_name": "fam",
+    "family_id": "f4",
+    "count": 0,
+    "count_id": 3,
+    "fam": [
+        {
+            "identifier": "p0",
+            "name": "d",
+            "birth": "1",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partner": "p1",
+            "kids": [
+                "p2"
+            ]
+        },
+        {
+            "identifier": "p1",
+            "name": "m",
+            "birth": "1",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partner": "p0",
+            "kids": [
+                "p2"
+            ]
+        },
+        {
+            "identifier": "p2",
+            "name": "s1",
+            "birth": "2",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": "p0",
+            "mother": "p1",
+            "siblings": [],
+            "partner": null,
+            "kids": []
+        }
+    ]
+}
