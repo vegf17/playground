@@ -32,7 +32,7 @@ import Beautify
 import KStep
 --my imports--
 
-data Trace = undefined
+--data Trace = undefined
 
 
 -- runDebugSch :: Sch -> C -> LMem -> Int -> [(Mem, Double)]
@@ -40,16 +40,16 @@ data Trace = undefined
 --                            in map (\(prob_path, lmem) -> (prob_path, cleanL $ getDist lmem) ) result
 --   where cleanL = map (\((sc,l,sq),p) -> ((sc,sq),p))
 
-traceSch :: (Sch, ProbPath, Int) -> (ProbPath, Dist LMem)
-traceSch (_, path, 0) = Dist (path, [(snd $ snd path, 0)])   -- or whatever base case makes sense
-traceSch (sch, l@(path, (c, s)), k) =
-  case (sch l) of
-    Nothing -> error "Scheduler undefined"
-    Just convDist -> do 
-      let ppL = [ [ (s, p*q) | (s, p) <- (projL dist)] | (dist, q) <- convDist] -- [([(S, Double)], Double)]
-          next_eval = [[((sch, (path ++ [((c, s), dist)], cs), k-1), p*q) | (cs, p) <- (projR dist)] | (dist, q) <- convDist]
-          transStep = (Dist $ concat next_eval) >>= kStepSch
-      addDist transStep (Dist $ concat ppL)
+-- traceSch :: (Sch, ProbPath, Int) -> (ProbPath, Dist LMem)
+-- traceSch (_, path, 0) = Dist (path, [(snd $ snd path, 0)])   -- or whatever base case makes sense
+-- traceSch (sch, l@(path, (c, s)), k) =
+--   case (sch l) of
+--     Nothing -> error "Scheduler undefined"
+--     Just convDist -> do 
+--       let ppL = [ [ (s, p*q) | (s, p) <- (projL dist)] | (dist, q) <- convDist] -- [([(S, Double)], Double)]
+--           next_eval = [[((sch, (path ++ [((c, s), dist)], cs), k-1), p*q) | (cs, p) <- (projR dist)] | (dist, q) <- convDist]
+--           transStep = (Dist $ concat next_eval) >>= kStepSch
+--       addDist transStep (Dist $ concat ppL)
 
 
 
