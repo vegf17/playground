@@ -24,18 +24,21 @@ git sparse-checkout set qProbConcHappy
 cd qProbConcHappy
 cabal build
 cabal repl
+```
 
-These commands clone only the qProbConcHappy folder from the qProbConc branch, build the Cabal
-project, and open a GHCi session.
+These commands clone only the `qProbConcHappy` folder from the `qProbConc` branch, build the Cabal project, and open a GHCi session.
 
-Once GHCi is open, load the ``Run`` module:
+Once GHCi is open, load the `Run` module:
+
+```haskell
 :l Run.hs
-
+```
 
 ### Run your first example
 
 Create a file called `myExample.txt` inside the `qProbConcHappy` folder with the following contents:
 
+```text
 ---QtCoinTossConc---
 hist: 10
 k: 10
@@ -44,23 +47,29 @@ qs: 2
 
 H(q0); Meas(c0,q0) || H(q1); Meas(c1,q1)
 ---QtCoinTossConc---
+```
 
 Then, in the open GHCi session, run:
+
+```haskell
 runSem "./myExample.txt" initSch
+```
 
 This executes the program using the k-step operational semantics and prints the result.
 
 To generate an interactive histogram, run:
+
+```haskell
 runHist "./myExample.txt" initSch
+```
 
 This prints a link. Open the link in a web browser to interact with the generated histogram.
 
-The argument initSch is a scheduler defined in KStep.hs. It is used by runSem and runHist to decide
-how concurrent programs are scheduled.
+The argument `initSch` is a scheduler defined in `KStep.hs`. It is used by `runSem` and `runHist` to decide how concurrent programs are scheduled.
 
 
 
-## How to use the tool
+## How to use the tool (to do)
 
 1. Inside the downloaded folder, create a txt file with one or more programs with the following format
 (to see some examples, take a look at the txt files we have developed inside the folder "examples")
