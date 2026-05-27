@@ -1,0 +1,67 @@
+import Data.List
+
+{-
+take a quantum circuit
+list of pairs
+each pair is the name of the gate and the second is the qubits
+[(G, [Qbit])]
+
+goal: execute the circuit efficiently (verify if it exists disjoint qubits on the gates, and put them into parallel layouts)
+-}
+
+
+{-
+
+example:
+H[0]; CX[0,1]; H[2] --> [[H[0]; CX[0,1]], [H[2]]]
+H[0]; CX[0,1]; H[1] --> [[H[0]; CX[0,1]; H[1]]]
+
+CX[0,1];CX[1,2]
+CX[0,1];CX[2,3];CX[1,2]
+-}
+
+Qbit = Int
+G = String
+
+qCirc = [(G, [Qbit])]
+  
+
+runCirc :: qCirc -> [qCirc]
+runCirc [] = [[]]
+runCirc qcirc = let all_qubits = map snd qcirc -- [[Qbit]]
+                    clean_single_qubits = filter (\e -> length e > 1) all_qubits -- list of lists of two or more qubits
+                in runCircAux qcirc clean_single_qubits
+
+--group_qubtis :: all_qubits -> list_to_build -> return the built list
+group_qubits :: [[Qbit]] -> [Qbit] -> [Qbit]
+group_qubits [] l = l
+group_qubits (h:t) l = if any (\q -> elem q h) l
+                       then group_qubits t (nub $ h++l)
+                       else group_qubits (t++[h]) (nub $ l)
+
+
+{-
+CX[0,1];CX[2,3];CX[1,2]
+
+clean_single_qubits = [[0,1],[2,3],[1,2]]
+group_qubits [[2,3],[1,2]] [0,1]
+group_qubits [[1,2],[2,3]] [0,1]
+group_qubits [[2,3]] [0,1,2] --> [0,1,2,3]
+
+CX[0,1];CX[2,3];CX[1,2];CX[4,5];CX[6,7]
+clean_single_qubits = [[0,1],[2,3],[1,2],[4,5]]
+group_qubits [[2,3],[1,2],[4,5]] [0,1]
+group_qubits [[1,2],[4,5],[2,3]] [0,1]
+group_qubits [[2,3],[4,5]] [0,1,2]
+group_qubits [[4,5],[6,7]] [0,1,2,3]
+-}
+
+runCircAux :: qCirc -> [[Qbit]] -> [qCirc]
+runCircAux [] _ = [[]]
+runCircAux ((g, qubits):t) l_qubits = 
+
+belongsTo :: [Qbit] -> [[Qbit]] -> Bool
+belongsTo _ [] = False
+belongsTo qubits (h:t) = if or $ map (\q -> if elem q h then True else False) qubits ==True
+                         then True
+                         else belongsTo qubits t

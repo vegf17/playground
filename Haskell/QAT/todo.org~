@@ -1,0 +1,53 @@
+#+TITLE: To Do List
+
+* Tasks [4/15]
+:PROPERTIES:
+:COOKIE_DATA: todo
+:END:
+
+** DONE Given two lists, return all possible interleavings preserving the internal order of each list
+** DONE Expression evaluator and simplifier
+*** DONE eval :: Env -> Expr -> Maybe Int
+*** DONE simplify :: Expr -> Expr
+*** DONE vars :: Expr -> [String]
+*** DONE depth :: Expr -> Int
+** DONE Small-step interpreter for a toy language (C::=sk|x:=n|C;C|if b then C else C|while b do C)
+*** DONE step :: (C, St) -> Maybe (C, St)
+*** DONE run :: (C, St) -> St
+** TODO Reachable states in a transition system
+*** TODO reach :: Int -> [(Int, Int)] -> Bool
+*** TODO hasCycle :: [(Int, Int)] -> Bool
+*** TODO shorthestPath :: Int -> Int -> [(Int,Int)] -> [(Int, Int)]
+*** TODO allPaths :: Int -> Int -> [(Int,Int)] -> [ [(Int, Int)] ]
+** TODO Generate all execution traces (needs further explanation)
+** TODO Topological sort on graphs
+** DONE Balanced parentheses/brackets
+** TODO Parser for arithmetic expressions
+** TODO Matrix-vector multiplication
+*** TODO matVec :: [ [Double] ] -> [Double] -> Maybe [Double]
+*** TODO matMul :: [ [Double] ] -> [ [Double] ] -> Maybe [ [Double] ]
+*** TODO transpose :: [ [Double] ] -> [ [Double] ]
+*** TODO identity :: Int -> [ [Double] ] 
+** TODO Tensor product
+*** TODO tensor_vectors :: [Double] -> [Double] -> [Double]
+*** TODO tensor_mat :: [ [Double] ] -> [ [Double] ] -> [ [Double] ]
+** TODO Tiny circuit representation (C ::= skip | U[q] | C;C | Meas q C C)
+*** DONE circuit_list :: C -> [G]
+*** DONE countGates :: C -> Int
+*** DONE usedQubits :: C -> [Qubits]
+*** DONE depthEstimate :: C -> Int
+*** TODO validateCircuit :: C -> Bool
+**** no negative qubit indices; CNOT control and target different; measurements and gate application only on existing qubits
+** TODO Simple symbolic quantum circuit simplifier
+*** TODO simplifyCirc :: C -> C
+** TODO Noise channel as list distribution (needs further explanation)
+*** TODO normalize
+*** TODO combineEqualStates
+*** TODO applyTransition
+** TODO Benchmark summary (Given a list of runtimes [1.2, 1.4, 1.1, 2.0, 1.3])
+*** TODO min :: [Float] -> Float
+*** TODO max :: [Float] -> Float
+*** TODO mean :: [Float] -> Float
+*** TODO median :: [Float] -> Float (need more information for this)
+*** TODO variance :: [Float] -> Float (need more information for this)
+** TODO Design a reusable API for a simulator (needs further explanation)
