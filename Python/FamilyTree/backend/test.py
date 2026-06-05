@@ -1,107 +1,70 @@
-from person import *
-import networkx as nx
-import matplotlib.pyplot as plt
-from fam import *
+from backend import *
+from classes import *
+import shutil
+from sample_family_data import PERSON_SPECS, FAMILY_MEMBERS, FAMILY_NAMES, PARENT_LINKS, PARTNER_LINKS
+from seed_sample_data import seed_sample_data
 
-import graphviz
-from graphviz import Digraph
+shutil.rmtree(DATA_SOURCE)
+start()
+init_count_file()
 
-#DEFINITION OF FAM1
-fam1 = init_family("Family 1")
-
-p1 = Person("Father", "01/01/1965")
-p2 = Person("Mother", "01/01/1968")
-p3 = Person("Sibling One", "01/01/1994", father=p1, mother=p2)
-p4 = Person("Sibling Two", "01/01/1998", father=p1, mother=p2)
-p5 = Person("Partner One", "01/01/1996")
-p6 = Person("Partner Two", "01/01/1997")
-p7 = Person("Kid One", "01/01/2020", father=p5, mother=p3)
-p8 = Person("Kid Two", "01/01/2021", father=p6, mother=p4)
-p9 = Person("Kid Three", "01/01/2022", father=p6, mother=p4)
-p10 = Person("Kid Four", "01/01/2023", father=p6, mother=p4)
-
-p1.partner = p2
-p2.partner = p1
-
-p1.kids = [p3, p4]
-p2.kids = [p3, p4]
-
-p3.siblings = [p4]
-p4.siblings = [p3]
-
-p3.partner = p5
-p5.partner = p3
-
-p4.partner = p6
-p6.partner = p4
-
-p3.kids = [p7]
-p5.kids = [p7]
-
-p4.kids = [p8, p9, p10]
-p6.kids = [p8, p9, p10]
-
-fam1_list = [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10]
-
-for p in fam1_list:
-    add_new_member(fam1,p)
-
-#fam1.showGraph()
-
-#DEFINITION OF FAM2
-fam2 = init_family("Family 2")
-q1 = Person("Father", "01/01/1965")
-q2 = Person("Mother", "01/01/1968")
-q3 = Person("Sibling One", "01/01/1994", father=q1, mother=q2)
-q4 = Person("Sibling Two", "01/01/1998", father=q1, mother=q2)
-q5 = Person("Partner One", "01/01/1996")
-q6 = Person("Kid One", "01/01/2020", father=q5, mother=q3)
+p0=add_person("Manuel Fernandes")
+p1=add_person("Maria Fernandes")
+p2=add_person("Vitor Fernandes")
+p3=add_person("David Fernandes")
+p4=add_person("Carlos Fernandes")
+p5=add_person("Gabriela Antonieta")
+p6=add_person("Maria Antonieta")
+p7=add_person("Jose Afonso")
+p8=add_person("Antonio Carlos")
+p9=add_person("Josefina Antunes")
+p10=add_person("Cristo Rei")
 
 
-q1.partner = q2
-q2.partner = q1
+f0=init_family("Fernandes",
+               members=[p0.identifier, p1.identifier, p2.identifier],
+               relations={
+                   p0.identifier : {
+                       "partners" : [p1.identifier],
+                       "kids": [p2.identifier]
+                   }
+               })
 
-q1.kids = [q3, q4]
-q2.kids = [q3, q4]
+add_person_to_family(f0.identifier, p3, father=p0.identifier)
+add_person_to_family(f0.identifier, p4, mother=p1.identifier)
+add_person_to_family(f0.identifier, p5, partners=[p0.identifier])
+add_person_to_family(f0.identifier, p6, mother=p5.identifier)
+add_person_to_family(f0.identifier, p7, partners=[p5.identifier])
+add_person_to_family(f0.identifier, p8, father=p7.identifier, partners=[p3.identifier])
+add_person_to_family(f0.identifier, p9, partners=[p2.identifier])
+add_person_to_family(f0.identifier, p10, mother=p9.identifier)
 
-q3.siblings = [q4]
-q4.siblings = [q3]
-
-q3.partner = q5
-q5.partner = q3
-
-q3.kids = [q6]
-q5.kids = [q6]
-
-fam2_list = [q1,q2,q3,q4,q5,q6]
-
-for p in fam2_list:
-    add_new_member(fam2,p)
-
-#fam2.showGraph()
-
-#DEFINITION OF FAMILY FAM3
-fam3 = init_family("Family 3")
-
-pp1 = Person("Antonio", "01/01/1990")
-pp2 = Person("Maria", "01/01/1990")
-
-pp1.partner=pp2
-pp2.partner=pp1
-
-fam3_list=[pp1,pp2]
-for p in fam3_list:
-    add_new_member(fam3,p)
-    
-print(fam3.toJSON())
-fam3=load_family("Family 3", fam3.family_id)
-fam3.printFamily()
-# fam3.showGraph()
+upd_info_person(p0.identifier, blood_type="A+", diseases=["diabetes", "asthma"])
+upd_info_person(p1.identifier, blood_type="A-", diseases=[])
+upd_info_person(p2.identifier, blood_type="B+", diseases=["hypertension"])
+upd_info_person(p3.identifier, blood_type="B-", diseases=["asthma", "eczema"])
+upd_info_person(p4.identifier, blood_type="O+", diseases=["diabetes", "hypertension", "arthritis"])
+upd_info_person(p5.identifier, blood_type="O-", diseases=[])
+upd_info_person(p6.identifier, blood_type="AB+", diseases=["migraine"])
+upd_info_person(p7.identifier, blood_type="AB-", diseases=["asthma", "migraine"])
+upd_info_person(p8.identifier, blood_type="A+", diseases=["eczema"])
+upd_info_person(p9.identifier, blood_type="A-", diseases=[])
+upd_info_person(p10.identifier, blood_type="B+", diseases=["diabetes", "arthritis"])
 
 
-#delete_member(fam3, pp2)
-#delete_family_folder(fam3)
+seed_sample_data()
 
-# family=load_family("family")
-# family.printFamily()
-# family.showGraph()
+print(track_person_diseases("p17"))
+
+# print(track_person_diseases(p2.identifier))
+# print(fam_blood_types(f0.identifier))
+# print(fam_diseases(f0.identifier))
+
+
+
+# f1=init_family("Silva")
+
+# add_person_to_family(f1.identifier, p7)
+# add_person_to_family(f1.identifier, p9)
+
+# #rmv_person(p9.identifier)

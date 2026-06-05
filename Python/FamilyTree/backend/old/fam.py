@@ -61,7 +61,11 @@ def load_family(fam_name, family_id):
     fam_name: Family name or json family name
     family_id: Identifier of the family
     """
-    f_name, f_id = fam_name.rsplit("-")
+    try:
+        f_name, f_id = fam_name.rsplit("-")
+    except ValueError:
+        f_name = fam_name
+        f_id = ""
     if f_id == "":
         folder_name = fam_name.replace(" ", "_").lower() + "-" + str(family_id) + "/"
         filename = fam_name.replace(" ", "_").lower() + "-" + str(family_id) + ".json"
@@ -76,6 +80,7 @@ def load_family(fam_name, family_id):
     return family_from_dict(data)
 
 
+####updated this function to support more than one partner
 def add_new_member(family, person):
     """
     family: Family
@@ -85,9 +90,11 @@ def add_new_member(family, person):
     family.count_id = family.count_id+1
     family.fam.append(person)
 
-    #if the person has a partner, which is in fam but does not have a partner, then update that info
-    if person.partner is not None and person.partner in family.fam: #the partner exists and it is in fam
-        person.partner.partner=person
+    #if the added person selects a partner, which is already in the family, then it updates the
+    #information of the partner by adding the added person as a partner
+    for partner in person.partners:
+        if partner in family.fam and person not in partner.partners:
+            partner.partners.append(person)
 
     save_family(family)
     #family.fam_graph.node(f"{family.fam.index(person)}", person.name)
@@ -113,7 +120,8 @@ def upd_member_info(family,
                     clinical_history,
                     father,
                     mother,
-                    partner
+                    partners,
+                    photo
                     ):
     p = get_member(family, person_id)
     p.name = name
@@ -124,7 +132,8 @@ def upd_member_info(family,
     p.health_info["clinical_history"] = clinical_history
     p.father = father
     p.mother = mother
-    p.partner = partner
+    p.partners = partners
+    p.photo = photo
 
     upd_family_relations(family, p)
     
@@ -155,35 +164,66 @@ def find_index_by_id(options, person):
 
     return None
 
-# this function has the goal to update the fields, given a family and a new member:
+####updated this function to support more than one partner
+# this function has the goal to update the connections between family members, given a family and a
+# new member:
+#
 # partner for father and mother (if both exist)
 # kids for father and mother (if both exist)
 # siblings (if they exist)
 def upd_family_relations(family, person):
-    #update partner
-    if person.partner is not None:
-        if person.partner.partner is None:
-            person.partner.partner = person
+    #update partners
+    for partner in person.partners:
+        if person not in partner.partners:
+            partner.partners.append(person)
+    # if person.partner is not None:
+    #     if person.partner.partner is None:
+    #         person.partner.partner = person
 
-    #update parents, siblings, and kidsg
+    #update parents, siblings, and kids
     if person.father is not None and person.mother is not None:
-        if person.father.partner is None and person.mother.partner is None:
-            person.father.partner = person.mother
-            person.mother.partner = person.father
+        for partner in person.father.partners:
+            if partner.identifier==person.mother.identifier and person.mother not in person.father.partners:
+                person.father.partners.append(person.mother)
+                person.mother.partners.append(person.father)
+        for partner in person.mother.partners:
+            if partner.identifier==person.father.identifier and person.father not in person.mother.partners:
+                person.father.partners.append(person.mother)
+                person.mother.partners.append(person.father)
         if person not in person.father.kids:
             person.father.kids.append(person)
         if person not in person.mother.kids:
             person.mother.kids.append(person)
-        for s in person.father.kids: #at this point, we are assuming that father and mother have the
-                                     #same kids (this entails that a person can only have one
-                                     #partner)
+        for s in person.father.kids: 
             if s is not person and s not in person.siblings:
                 person.siblings.append(s)
                 s.siblings.append(person)
+        for s in person.mother.kids:
+            if s is not person and s not in person.siblings:
+                person.siblings.append(s)
+                s.siblings.append(person)
+            
+
+    # #update parents, siblings, and kids
+    # if person.father is not None and person.mother is not None:
+    #     if person.father.partner is None and person.mother.partner is None:
+    #         person.father.partner = person.mother
+    #         person.mother.partner = person.father
+    #     if person not in person.father.kids:
+    #         person.father.kids.append(person)
+    #     if person not in person.mother.kids:
+    #         person.mother.kids.append(person)
+    #     for s in person.father.kids: #at this point, we are assuming that father and mother have the
+    #                                  #same kids (this entails that a person can only have one
+    #                                  #partner)
+    #         if s is not person and s not in person.siblings:
+    #             person.siblings.append(s)
+    #             s.siblings.append(person)
 
     return family
 
 
+####updated this function to support more than one partner
 def delete_member(family, person):
     """
     family: Family
@@ -210,11 +250,9 @@ def delete_member(family, person):
                 p.kids.remove(person)
             if person in p.siblings:
                 p.siblings.remove(person)
-            if p.partner==person:
-                p.partner=None
+            if person in p.partners:
+                p.partners.remove(person)
         print(f"{person.name}({person.identifier}) was eliminated from {family.fam_name}")
-
-    
 
     return family
 
@@ -244,6 +282,7 @@ def reset_family(family):
     save_family(family)
 
 
+####updated this function to support more than one partner
 def family_from_dict(data):
     family = Family(data["fam_name"])
 
@@ -268,6 +307,7 @@ def family_from_dict(data):
         )
 
         p.identifier = p_data["identifier"]
+        p.photo = p_data["photo"]
         people_by_id[p.identifier] = p
 
     # Second pass: reconnect relationships
@@ -277,8 +317,9 @@ def family_from_dict(data):
             p.father = people_by_id[p_data["father"]]
         if p_data["mother"] is not None:
             p.mother = people_by_id[p_data["mother"]]
-        if p_data["partner"] is not None:
-            p.partner = people_by_id[p_data["partner"]]
+        # if p_data["partner"] is not None:
+        #     p.partner = people_by_id[p_data["partner"]]
+        p.partners = [people_by_id[partner_id] for partner_id in p_data["partners"]]
         p.siblings = [
             people_by_id[sibling_id]
             for sibling_id in p_data["siblings"]
@@ -319,6 +360,7 @@ def node_fam(fam_graph, fam):
     return fam_graph
 
 
+####updated this function to support more than one partner - to do
 def edge_fam(fam_graph, edges, fam, i):
     """
     fam_graph: Digraph
@@ -331,12 +373,20 @@ def edge_fam(fam_graph, edges, fam, i):
         edges_fst = [x for (x,y) in edges]
         edges_snd = [y for (x,y) in edges]
 
-        if person.partner is not None and person.partner in fam:
-            partner_id = person.partner.identifier #f"{fam.index(person.partner)}"
-            if (partner_id in edges_fst) or (partner_id in edges_snd):
-                pass
-            else:
-                (i, edges) = add_invisible_node(fam_graph, fam, person, person.partner, i+1, edges)        
+        for partner in person.partners:
+            if partner in fam:
+                partner_id = partner.identifier
+                if (partner_id in edges_fst) or (partner_id in edges_snd):
+                    pass
+                else:
+                    (i, edges) = add_invisible_node(fam_graph, fam, person, partner, i+1, edges)        
+        # if person.partner is not None and person.partner in fam:
+        #     partner_id = person.partner.identifier #f"{fam.index(person.partner)}"
+        #     if (partner_id in edges_fst) or (partner_id in edges_snd):
+        #         pass
+        #     else:
+        #         (i, edges) = add_invisible_node(fam_graph, fam, person, person.partner, i+1, edges)        
+
         if person.father is not None and person.mother is not None and person.father in fam and person.mother in fam:
             father_id = person.father.identifier #f"{fam.index(person.father)}"
             mother_id = person.mother.identifier #f"{fam.index(person.mother)}"
