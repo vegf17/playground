@@ -47,9 +47,10 @@ class Person:
                  father=None, #Person (in JSON it is saved the identifier)
                  mother=None, #Person
                  siblings=None, #[Person]
-                 partner=None, #Person
+                 partners=None, #[Person]
                  kids=None, #[Person]
-                 identifier=None
+                 identifier=None, #string
+                 photo=None #location 
                  ):
         self.name = name
         self.birth = birth
@@ -62,9 +63,10 @@ class Person:
         self.father = father
         self.mother = mother
         self.siblings = siblings if siblings is not None else []
-        self.partner = partner
+        self.partners = partners if partners is not None else []
         self.kids = kids if kids is not None else []
         self.identifier = identifier
+        self.photo = photo
 
     def printPerson(self):
         print("Name: %s" % self.name)
@@ -72,15 +74,15 @@ class Person:
         if self.death: #if self death is not equal to ""
             print("Death: %s" % self.death)
 
-        if self.father or self.mother or self.partner or self.siblings or self.kids is not None:
+        if self.father or self.mother or self.partners or self.siblings or self.kids is not None:
             print("Family:")
 
             if self.father is not None:
                 print("Father:", self.father.name)
             if self.mother is not None:
                 print("Mother:", self.mother.name)
-            if self.partner is not None:
-                print("Partner:", self.partner.name)
+            if self.partners is not None:
+                print("Partner(s):", [partner.name for partner in self.partners])
             if self.siblings:
                 print("Siblings:", [sibling.name for sibling in self.siblings])
             if self.kids:
@@ -108,6 +110,7 @@ def person_to_dict(fam, p):
     p: Person
     """
     return {
+        "photo": p.photo,
         "identifier": p.identifier,
         "name": p.name,
         "birth": p.birth,
@@ -116,7 +119,7 @@ def person_to_dict(fam, p):
         "father": p.father.identifier if p.father is not None else None,
         "mother": p.mother.identifier if p.mother is not None else None,
         "siblings": [sibling.identifier for sibling in p.siblings],
-        "partner": p.partner.identifier if p.partner is not None else None,
+        "partners": [partner.identifier for partner in p.partners],
         "kids": [kid.identifier for kid in p.kids]
     }
 

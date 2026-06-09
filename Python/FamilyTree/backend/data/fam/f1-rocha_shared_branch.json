@@ -1,0 +1,137 @@
+{
+    "f1": {
+        "name": "Rocha Shared Branch",
+        "members": [
+            "p15",
+            "p16",
+            "p17",
+            "p18",
+            "p6",
+            "p19",
+            "p4",
+            "p8",
+            "p9",
+            "p20",
+            "p21"
+        ],
+        "relations": {
+            "p15": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p16"
+                ],
+                "kids": [
+                    "p17"
+                ]
+            },
+            "p16": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p15"
+                ],
+                "kids": [
+                    "p17"
+                ]
+            },
+            "p17": {
+                "father": "p15",
+                "mother": "p16",
+                "siblings": [],
+                "partners": [
+                    "p18"
+                ],
+                "kids": [
+                    "p6",
+                    "p19"
+                ]
+            },
+            "p18": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p17"
+                ],
+                "kids": [
+                    "p6",
+                    "p19"
+                ]
+            },
+            "p6": {
+                "father": "p17",
+                "mother": "p18",
+                "siblings": [
+                    "p19"
+                ],
+                "partners": [
+                    "p4"
+                ],
+                "kids": [
+                    "p8",
+                    "p9"
+                ]
+            },
+            "p19": {
+                "father": "p17",
+                "mother": "p18",
+                "siblings": [
+                    "p6"
+                ],
+                "partners": [],
+                "kids": [
+                    "p20"
+                ]
+            },
+            "p4": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p6"
+                ],
+                "kids": [
+                    "p8",
+                    "p9"
+                ]
+            },
+            "p8": {
+                "father": "p4",
+                "mother": "p6",
+                "siblings": [
+                    "p9"
+                ],
+                "partners": [],
+                "kids": []
+            },
+            "p9": {
+                "father": "p4",
+                "mother": "p6",
+                "siblings": [
+                    "p8"
+                ],
+                "partners": [],
+                "kids": []
+            },
+            "p20": {
+                "father": "p19",
+                "mother": null,
+                "siblings": [],
+                "partners": [],
+                "kids": [
+                    "p21"
+                ]
+            },
+            "p21": {
+                "father": null,
+                "mother": "p20",
+                "siblings": [],
+                "partners": [],
+                "kids": []
+            }
+        }
+    }
+}

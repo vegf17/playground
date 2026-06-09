@@ -1,3 +1,0 @@
-import sys
-import random
-import PySide6 import QtCore, QtWidgets, QtGui

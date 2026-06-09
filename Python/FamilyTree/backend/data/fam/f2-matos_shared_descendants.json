@@ -1,0 +1,152 @@
+{
+    "f2": {
+        "name": "Matos Shared Descendants",
+        "members": [
+            "p22",
+            "p23",
+            "p24",
+            "p25",
+            "p11",
+            "p26",
+            "p27",
+            "p8",
+            "p13",
+            "p12",
+            "p14",
+            "p28"
+        ],
+        "relations": {
+            "p22": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p23"
+                ],
+                "kids": [
+                    "p24"
+                ]
+            },
+            "p23": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p22"
+                ],
+                "kids": [
+                    "p24"
+                ]
+            },
+            "p24": {
+                "father": "p22",
+                "mother": "p23",
+                "siblings": [],
+                "partners": [
+                    "p25"
+                ],
+                "kids": [
+                    "p11",
+                    "p26",
+                    "p27"
+                ]
+            },
+            "p25": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p24"
+                ],
+                "kids": [
+                    "p11",
+                    "p26",
+                    "p27"
+                ]
+            },
+            "p11": {
+                "father": "p24",
+                "mother": "p25",
+                "siblings": [
+                    "p26",
+                    "p27"
+                ],
+                "partners": [
+                    "p8"
+                ],
+                "kids": [
+                    "p13"
+                ]
+            },
+            "p26": {
+                "father": "p24",
+                "mother": "p25",
+                "siblings": [
+                    "p11",
+                    "p27"
+                ],
+                "partners": [],
+                "kids": [
+                    "p28"
+                ]
+            },
+            "p27": {
+                "father": "p24",
+                "mother": "p25",
+                "siblings": [
+                    "p11",
+                    "p26"
+                ],
+                "partners": [],
+                "kids": []
+            },
+            "p8": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p11"
+                ],
+                "kids": [
+                    "p13"
+                ]
+            },
+            "p13": {
+                "father": "p11",
+                "mother": "p8",
+                "siblings": [],
+                "partners": [
+                    "p12"
+                ],
+                "kids": [
+                    "p14"
+                ]
+            },
+            "p12": {
+                "father": null,
+                "mother": null,
+                "siblings": [],
+                "partners": [
+                    "p13"
+                ],
+                "kids": [
+                    "p14"
+                ]
+            },
+            "p14": {
+                "father": "p13",
+                "mother": "p12",
+                "siblings": [],
+                "partners": [],
+                "kids": []
+            },
+            "p28": {
+                "father": null,
+                "mother": "p26",
+                "siblings": [],
+                "partners": [],
+                "kids": []
+            }
+        }
+    }
+}

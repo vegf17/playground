@@ -1,0 +1,87 @@
+{
+    "fam_name": "Family 3",
+    "family_id": "f5",
+    "count": 0,
+    "count_id": 4,
+    "fam": [
+        {
+            "photo": "./data/family_3-f5/antonio-p0/1.jpg",
+            "identifier": "p0",
+            "name": "Antonio",
+            "birth": "01/01/1990",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partners": [
+                "p1",
+                "p2"
+            ],
+            "kids": [],
+            "fam_tags": []
+        },
+        {
+            "photo": null,
+            "identifier": "p1",
+            "name": "Maria",
+            "birth": "01/01/1990",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partners": [
+                "p0"
+            ],
+            "kids": [],
+            "fam_tags": []
+        },
+        {
+            "photo": null,
+            "identifier": "p2",
+            "name": "Antonia",
+            "birth": "02/02/1990",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": null,
+            "mother": null,
+            "siblings": [],
+            "partners": [
+                "p0"
+            ],
+            "kids": [],
+            "fam_tags": []
+        },
+        {
+            "photo": null,
+            "identifier": "p3",
+            "name": "Jose",
+            "birth": "03/03/2000",
+            "death": "",
+            "health_info": {
+                "blood_type": "",
+                "diseases": [],
+                "clinical_history": []
+            },
+            "father": "p0",
+            "mother": "p1",
+            "siblings": [],
+            "partners": [],
+            "kids": [],
+            "fam_tags": []
+        }
+    ]
+}
