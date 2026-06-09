@@ -14,6 +14,9 @@ import JSONCodify
 import GUI
 import Debug
 
+import JSONDebug
+import GuiDebug
+
 import System.Exit
 import Data.List
 import Data.Matrix
@@ -84,23 +87,57 @@ runHistAux (h:t) sch json_file = do
   appendJson json_file prog1
   runHistAux t sch json_file -- [(String, [(Int, (StC, StQ))])]
   
-  
---Receives a filename and produces the debugger
-runDebug :: String -> SchDebug -> IO()
+
+-- Receives a filename and produces the debugger GUI.
+-- It stores the result of run_debug_KStepSch in a JSON file and then opens
+-- a Threepenny GUI where the user can select:
+--   program -> outcome -> step
+runDebug :: String -> SchDebug -> IO ()
 runDebug path sch_d = do
+  json_file <- prepareDebugJsonFile path
+  resetDebugJsonFile json_file
+
   fileContent <- readFile path
+
   let configs = testFile fileContent
-  runDebugAux configs sch_d
+      config_GUI = defaultConfig
+        { jsStatic = Just "app/static"
+        }
+
+  runDebugAux configs sch_d json_file
+  startGUI config_GUI (setupDebug json_file)
+
+
+runDebugAux
+  :: [((String, Int, Int), (C, StC, L, StQ))]
+  -> SchDebug
+  -> FilePath
+  -> IO ()
+runDebugAux [] _ _ = return ()
+runDebugAux (((name, _rep, k), (c, sc, l, sq)) : t) sch_d json_file = do
+  let initial = (sc, l, sq)
+      result  = run_debug_KStepSch sch_d c initial k
+      payload = debugResultToJSON name initial result
+
+  appendDebugJson json_file payload
+  runDebugAux t sch_d json_file
+  
+-- --Receives a filename and produces the debugger
+-- runDebug :: String -> SchDebug -> IO()
+-- runDebug path sch_d = do
+--   fileContent <- readFile path
+--   let configs = testFile fileContent
+--   runDebugAux configs sch_d
     
 
-runDebugAux ::  [((String, Int, Int), (C,StC,L,StQ))] -> SchDebug -> IO()
-runDebugAux [] _ = return ()
-runDebugAux (((name, rep, k),(c,sc,l,sq)):t) sch_d = do
-  let result = run_debug_KStepSch sch_d c (sc, l, sq) k
-  putStrLn name
-  show_debug_KStepSch sch_d c (sc, l, sq) k
-  --putStrLn $ show (length result)
-  --putStrLn $ show result
-  --putStrLn $ showRun (name, result)
-  runDebugAux t sch_d
+-- runDebugAux ::  [((String, Int, Int), (C,StC,L,StQ))] -> SchDebug -> IO()
+-- runDebugAux [] _ = return ()
+-- runDebugAux (((name, rep, k),(c,sc,l,sq)):t) sch_d = do
+--   let result = run_debug_KStepSch sch_d c (sc, l, sq) k
+--   putStrLn name
+--   show_debug_KStepSch sch_d c (sc, l, sq) k
+--   --putStrLn $ show (length result)
+--   --putStrLn $ show result
+--   --putStrLn $ showRun (name, result)
+--   runDebugAux t sch_d
 

@@ -65,7 +65,9 @@ extra-source-files: app/Beautify.hs,
                     app/JSONCodify.hs,
                     app/GUI.hs,
                     app/Debug.hs,
-                    app/static/plotly.min.js
+                    app/static/plotly.min.js,
+                    app/JSONDebug.hs,
+                    app/GuiDebug.hs
 
 common warnings
     --ghc-options: -Wall
@@ -94,7 +96,9 @@ executable qProbConcHappy
                    Collect_Samples,
                    JSONCodify,
                    GUI,
-                   Debug
+                   Debug,
+                   JSONDebug,
+                   GuiDebug
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

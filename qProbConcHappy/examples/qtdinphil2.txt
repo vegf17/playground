@@ -1,4 +1,5 @@
 ---QtDinPhil2---
+hist: 1
 k: 200
 cs: [(doneSB1,0),(doneSB2,0),
  (doSB1,0),(doSB2,0),

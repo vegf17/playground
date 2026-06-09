@@ -1,0 +1,6 @@
+
+# Haskell build artifacts
+dist-newstyle/
+
+# Large debug JSON files
+qProbConcHappy/examples/json/*_debug.json

@@ -1,5 +1,6 @@
 ---ProbDinPhil3---
-k: 1000
+hist: 1
+k: 200
 cs:[(st1,1),(st2,1),(st3,1),(cs1,1),(cs2,1),(cs3,1),(try1,0),(try2,0),(try3,0),(chops1,0),(chops2,0),(chops3,0),(eat1,0),(eat2,0),(eat3,0)]
 
  while(tt) do{
