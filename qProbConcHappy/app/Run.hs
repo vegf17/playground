@@ -86,19 +86,21 @@ runHistAux (h:t) sch json_file = do
   
   
 --Receives a filename and produces the debugger
--- runDebug :: String -> Sch -> IO()
--- runDebug path sch = do
---   fileContent <- readFile path
---   let configs = testFile fileContent
---   runDebugAux configs sch
+runDebug :: String -> SchDebug -> IO()
+runDebug path sch_d = do
+  fileContent <- readFile path
+  let configs = testFile fileContent
+  runDebugAux configs sch_d
     
 
--- runDebugAux ::  [((String, Int, Int), (C,StC,L,StQ))] -> Sch -> IO()
--- runDebugAux [] _ = return ()
--- runDebugAux (((name, rep, k),(c,sc,l,sq)):t) sch = do
---   let result = runDebugSch sch c (sc, l, sq) k
---   putStrLn $ show (length result)
---   putStrLn $ show result
---   --putStrLn $ showRun (name, result)
---   runDebugAux t sch
+runDebugAux ::  [((String, Int, Int), (C,StC,L,StQ))] -> SchDebug -> IO()
+runDebugAux [] _ = return ()
+runDebugAux (((name, rep, k),(c,sc,l,sq)):t) sch_d = do
+  let result = run_debug_KStepSch sch_d c (sc, l, sq) k
+  putStrLn name
+  show_debug_KStepSch sch_d c (sc, l, sq) k
+  --putStrLn $ show (length result)
+  --putStrLn $ show result
+  --putStrLn $ showRun (name, result)
+  runDebugAux t sch_d
 

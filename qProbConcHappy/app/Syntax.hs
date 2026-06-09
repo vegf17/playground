@@ -18,8 +18,8 @@ type StQ = Matrix (Complex Double) --quantum state, represented by a density ope
 type QVar = String
 type QVarList = [QVar]
 type DoubProb = Double
-type L = [(QVar, Loc)] -- linking function
 type Loc = Int
+type L = [(QVar, Loc)] -- linking function
 
 --memory
 type Mem = (StC, StQ)
