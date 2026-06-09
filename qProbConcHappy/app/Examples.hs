@@ -13,10 +13,10 @@ import Syntax
 import Gates
 
 --classical state--
-s1 = [("a",0), ("b",0), ("c",0)]
-s2 = [("a",0)]
-s3 = [("a",0), ("b",0)]
-s4 = [("a",0),("i",0)]
+s1 = [("a",0), ("b",0), ("c",0)] :: StC
+s2 = [("a",0)] :: StC
+s3 = [("a",0), ("b",0)] :: StC
+s4 = [("a",0),("i",0)] :: StC
 --classical state--
 
 --linking function--
@@ -28,7 +28,7 @@ l1 = [("q1",1),("q2",2),("q3",3)] :: [(String,Int)]
 l2 = [("q1",1)] :: [(String,Int)]
 l4 = [("q1",1),("q2",2)] :: [(String,Int)]
 lmem1 = (s1,l1,stH0) -- <-- estados
-lmem2 = (s2,l2,rho0) -- <-- operador densidade
+lmem2 = (s2,l2,rho0) :: LMem-- <-- operador densidade
 lmem3 = (s1,l2,fromLists [[]]) -- <-- operador densidade
 lmem4 = (s2, l4, rho00)
 lmem5 = (s3,[],fromLists [[]])
@@ -147,6 +147,7 @@ czq2q1 = U CZ ["q2","q1"] -- CZ(q2,q1)
 measq1 = Meas ("a","q1") -- M(a <- q1)
 measq2 = Meas ("b","q2") -- M(b <- q2)
 qseq1 = Seq hq1 measq1 -- H(q1); M(a <- q1)
+qseq1a = Seq (Seq hq1 measq1) (Seq hq2 measq2) -- H(q1); H(q2);M(a <- q1); M(b <- q2)
 qseq2 = Seq qseq1 qif1 -- H(q1); M(a <- q1); if -> (a<=0, a:=1,X(q1))
 qseq3 = Seq hq1 xq1 -- H(q1);X(q1)
 qseq3a = Seq hq2 xq2 -- H(q2);X(q2)
@@ -155,7 +156,8 @@ qseq5 = Seq hq1 cnotq1q2 -- H(q1);CNOT(q1,q2)
 qor1 = Or measq1 hq1 -- M(a <- q1) or H(q1)
 qor2 = Or (qseq3) hq1 -- H(q1);X(q1) or H(q1)
 qpar1 = Par hq1 measq1 -- H(q1) || M(a <- q1)
-qpar2 = Par measq1 xq1 -- M(a <- q1) || X(q1) 
+qpar2 = Par measq1 xq1 -- M(a <- q1) || X(q1)
+qpar3 = Par (Seq hq1 measq1) (Seq hq2 measq2) -- H(q1);M(a <- q1) || H(q2);M(b <- q2)
 qif1 = IfC (Leq (Var "a") (Num 0)) asga xq1 -- if -> (a<=0, a:=1,X(q1))
 qwhile1 = Whl (Leq (Var "a") (Num 0)) qseq1 -- while (a<=0) -> H(q1); M(a <- q1)
 qwhile2 = Whl (Leq (Var "a") (Num 0)) qpar1 -- while (a<=0) -> H(q1) || M(a <- q1)
