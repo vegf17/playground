@@ -70,6 +70,16 @@
   (major1) == 0 && (major2) <  6 || \
   (major1) == 0 && (major2) == 6 && (minor) <= 7)
 #endif /* MIN_VERSION_containers */
+/* package deepseq-1.4.8.1 */
+#ifndef VERSION_deepseq
+#define VERSION_deepseq "1.4.8.1"
+#endif /* VERSION_deepseq */
+#ifndef MIN_VERSION_deepseq
+#define MIN_VERSION_deepseq(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  4 || \
+  (major1) == 1 && (major2) == 4 && (minor) <= 8)
+#endif /* MIN_VERSION_deepseq */
 /* package directory-1.3.8.5 */
 #ifndef VERSION_directory
 #define VERSION_directory "1.3.8.5"
@@ -130,6 +140,16 @@
   (major1) == 0 && (major2) <  9 || \
   (major1) == 0 && (major2) == 9 && (minor) <= 4)
 #endif /* MIN_VERSION_threepenny_gui */
+/* package time-1.12.2 */
+#ifndef VERSION_time
+#define VERSION_time "1.12.2"
+#endif /* VERSION_time */
+#ifndef MIN_VERSION_time
+#define MIN_VERSION_time(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  12 || \
+  (major1) == 1 && (major2) == 12 && (minor) <= 2)
+#endif /* MIN_VERSION_time */
 /* package transformers-0.6.1.0 */
 #ifndef VERSION_transformers
 #define VERSION_transformers "0.6.1.0"

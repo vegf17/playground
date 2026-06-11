@@ -122,7 +122,9 @@ executable qProbConcHappy
                       bytestring,
                       directory,
                       filepath,
-                      containers
+                      containers,
+                      time,
+                      deepseq
 
     build-tool-depends: happy:happy
 

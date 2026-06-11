@@ -316,7 +316,7 @@ setupDebug jsonFile window = do
                     return ()
 
                   Just stp -> do
-                    let (cl, q) = prettyLMem (stateAfter stp)
+                    let (cl, q) = prettyMem (stateAfter stp)
                     element actionBox    # set text (action stp)
                     element classicalBox # set text cl
                     element quantumBox   # set text q

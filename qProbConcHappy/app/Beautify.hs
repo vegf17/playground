@@ -13,15 +13,14 @@ import Syntax
 precision = 5
 
 
-
 --START: Functions to transform quantum states, in the form of density operators, into the BraKet notation--
 
 -- Convert a memory (sc,sq), which is composed by a classical state sc and a quantum state sq, to a string
 memToString :: Mem -> String
 memToString (sc,sq) =
   case null (rmvPlus $ denOpToKetBraComplex sq) of
-    True -> "[" ++ showStC sc ++ "]"
-    False -> "[" ++ showStC sc ++ "], " ++ (rmvPlus $ denOpToKetBraComplex sq)
+    True -> '[' : showStC sc ++ "]"
+    False -> '[' : showStC sc ++ "], " ++ (rmvPlus $ denOpToKetBraComplex sq)
 
 --Convert a quantum state, which is a density operator, to a string with complex numbers
 --A quantum state is represented as a matrix, which can also be represented as \sum_i p_i |ψ_i><ψ_i| thus, 
