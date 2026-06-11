@@ -36,18 +36,14 @@ import JSONCodify (matrixToJSON, matrixFromJSON)
 --------------------------------------------------------------------------------
 
 data JMem = JMem
-  { jStc       :: StC
-  , jStq       :: StQ
-  , jClassical :: String
+  { jClassical :: String
   , jQuantum   :: String
   } deriving (Show, Eq)
 
 data JLMem = JLMem
-  { jlStc       :: StC
-  , jlLink      :: L
-  , jlStq       :: StQ
-  , jlClassical :: String
+  { jlClassical :: String
   , jlQuantum   :: String
+  , jlLink      :: L
   } deriving (Show, Eq)
 
 data DebugStepJSON = DebugStepJSON
@@ -81,20 +77,17 @@ prettyObject classical quantum =
     ]
 
 instance ToJSON JMem where
-  toJSON (JMem stc stq classical quantum) =
+  toJSON (JMem classical quantum) =
     object
-      [ "stc"    .= stc
-      , "stq"    .= matrixToJSON stq
-      , "pretty" .= prettyObject classical quantum
+      [ 
+        "pretty" .= prettyObject classical quantum
       ]
 
 instance ToJSON JLMem where
-  toJSON (JLMem stc link stq classical quantum) =
+  toJSON (JLMem classical quantum link) =
     object
-      [ "stc"             .= stc
+      [ "pretty"          .= prettyObject classical quantum
       , "linkingFunction" .= link
-      , "stq"             .= matrixToJSON stq
-      , "pretty"          .= prettyObject classical quantum
       ]
 
 instance ToJSON DebugStepJSON where
@@ -136,20 +129,14 @@ parsePretty o = do
 
 instance FromJSON JMem where
   parseJSON = withObject "JMem" $ \o -> do
-    stc <- o .: "stc"
-    stqVal <- o .: "stq"
-    stq <- matrixFromJSON stqVal
     (classical, quantum) <- parsePretty o
-    pure $ JMem stc stq classical quantum
+    pure $ JMem classical quantum
 
 instance FromJSON JLMem where
   parseJSON = withObject "JLMem" $ \o -> do
-    stc <- o .: "stc"
-    link <- o .: "linkingFunction"
-    stqVal <- o .: "stq"
-    stq <- matrixFromJSON stqVal
     (classical, quantum) <- parsePretty o
-    pure $ JLMem stc link stq classical quantum
+    link <- o .: "linkingFunction"
+    pure $ JLMem classical quantum link
 
 instance FromJSON DebugStepJSON where
   parseJSON = withObject "DebugStepJSON" $ \o ->
@@ -181,9 +168,7 @@ memToJMem :: Mem -> JMem
 memToJMem (stc, stq) =
   let stq' = limitPrecisionS 5 stq
   in JMem
-       { jStc       = stc
-       , jStq       = stq'
-       , jClassical = showStC stc
+       { jClassical = showStC stc
        , jQuantum   = showStQ stq'
        }
 
@@ -191,11 +176,9 @@ lmemToJLMem :: LMem -> JLMem
 lmemToJLMem (stc, link, stq) =
   let stq' = limitPrecisionS 5 stq
   in JLMem
-       { jlStc       = stc
-       , jlLink      = link
-       , jlStq       = stq'
-       , jlClassical = showStC stc
+       { jlClassical = showStC stc
        , jlQuantum   = showStQ stq'
+       , jlLink      = link       
        }
 
 histToSteps :: Hist -> [DebugStepJSON]
