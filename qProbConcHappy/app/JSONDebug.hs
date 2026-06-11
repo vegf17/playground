@@ -160,7 +160,7 @@ memToJMem (stc, stq) =
   let stq' = limitPrecisionS 5 stq
   in JMem
        { jClassical = showStC stc
-       , jQuantum   = "<hidden>" --showStQ stq'
+       , jQuantum   = showStQ stq'
        }
 
 lmemToJLMem :: LMem -> JLMem
@@ -168,7 +168,7 @@ lmemToJLMem (stc, link, stq) =
   let stq' = limitPrecisionS 5 stq
   in JLMem
        { jlClassical = showStC stc
-       , jlQuantum   = "<hidden>" --showStQ stq'
+       , jlQuantum   = showStQ stq'
        , jlLink      = link
        }
 
