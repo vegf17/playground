@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module GUI where
+module GUI2 where
 
 import Prelude hiding (div)
 import Graphics.UI.Threepenny.Core

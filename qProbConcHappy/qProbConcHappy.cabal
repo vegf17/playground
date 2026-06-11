@@ -116,6 +116,8 @@ executable qProbConcHappy
                       mwc-probability,
                       array,
                       aeson,
+                      aeson-pretty,
+                      vector,
                       threepenny-gui,
                       bytestring,
                       directory,

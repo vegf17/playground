@@ -9,6 +9,7 @@ import Prelude hiding (div)
 import Graphics.UI.Threepenny.Core
 import qualified Graphics.UI.Threepenny as UI
 
+import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.List (find)
 import Data.Maybe (fromMaybe)
@@ -24,13 +25,20 @@ import JSONDebug
 loadDebugCollections :: FilePath -> IO [DebugCollectionJSON]
 loadDebugCollections path = do
   content <- BL8.readFile path
-  let nonEmptyLines = filter (not . BL8.null) (BL8.lines content)
-  pure $ map decodeLine nonEmptyLines
-  where
-    decodeLine l =
-      case decodeDebugCollection l of
-        Right x  -> x
-        Left err -> error err
+  case Aeson.eitherDecode content of
+    Right xs  -> pure xs
+    Left err  -> error err
+
+-- loadDebugCollections :: FilePath -> IO [DebugCollectionJSON]
+-- loadDebugCollections path = do
+--   content <- BL8.readFile path
+--   let nonEmptyLines = filter (not . BL8.null) (BL8.lines content)
+--   pure $ map decodeLine nonEmptyLines
+--   where
+--     decodeLine l =
+--       case decodeDebugCollection l of
+--         Right x  -> x
+--         Left err -> error err
 
 --------------------------------------------------------------------------------
 -- Small helpers

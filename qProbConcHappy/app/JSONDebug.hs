@@ -17,6 +17,8 @@ module JSONDebug
 import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.Aeson as Aeson
+import Data.Aeson.Encode.Pretty (encodePretty)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.Matrix (Matrix)
 import System.Directory
@@ -233,13 +235,13 @@ debugResultToJSON name initial result =
 --------------------------------------------------------------------------------
 
 encodeDebugCollection :: DebugCollectionJSON -> BL.ByteString
-encodeDebugCollection = Aeson.encode
+encodeDebugCollection = encodePretty
 
 decodeDebugCollection :: BL.ByteString -> Either String DebugCollectionJSON
 decodeDebugCollection = Aeson.eitherDecode
 
--- | Creates json/<input-base>_debug.json next to the input file.
--- This avoids clashing with the histogram JSON file created by JSONCodify.prepareJsonFile.
+--  | Creates json/<input-base>_debug.json next to the input file.
+--  This avoids clashing with the histogram JSON file created by JSONCodify.prepareJsonFile.
 prepareDebugJsonFile :: FilePath -> IO FilePath
 prepareDebugJsonFile inputPath = do
   let parts = splitDirectories inputPath
@@ -251,14 +253,24 @@ prepareDebugJsonFile inputPath = do
 
   createDirectoryIfMissing True jsonDir
   exists <- doesFileExist jsonFile
-  unless exists $ writeFile jsonFile ""
+  unless exists $ BL.writeFile jsonFile (encodePretty ([] :: [DebugCollectionJSON]))
+
   putStrLn $ "Debug JSON file ready at: " ++ jsonFile
   pure jsonFile
 
 resetDebugJsonFile :: FilePath -> IO ()
-resetDebugJsonFile path = writeFile path ""
+resetDebugJsonFile path =
+  BL.writeFile path (encodePretty ([] :: [DebugCollectionJSON]))
 
 appendDebugJson :: FilePath -> DebugCollectionJSON -> IO ()
-appendDebugJson path value = withFile path AppendMode $ \h -> do
-  BL.hPutStr h (encodeDebugCollection value)
-  hPutStr h "\n"
+appendDebugJson path value = do
+  content <- BS.readFile path
+
+  let oldValues =
+        case Aeson.eitherDecodeStrict' content :: Either String [DebugCollectionJSON] of
+          Right xs -> xs
+          Left _   -> []
+
+      newValues = oldValues ++ [value]
+
+  BL.writeFile path (encodePretty newValues)

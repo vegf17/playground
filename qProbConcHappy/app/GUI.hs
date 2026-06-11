@@ -13,6 +13,7 @@ import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.Aeson as Aeson
 import qualified Data.Map.Strict as M
+import qualified Data.Vector as V
 
 import Collect_Samples
 import JSONCodify
@@ -21,18 +22,34 @@ import Examples
 import Beautify
 import QuantumCalc
 
+
+
+
 type ClassicalTrace = (String, [String], [Int])
+
 
 loadCollections :: FilePath -> IO [SampleCollection]
 loadCollections path = do
   content <- BL8.readFile path
-  let ls = BL8.lines content
-  return $ map decodeLine ls
+  case Aeson.eitherDecode content >>= parseEither parseCollections of
+    Right collections -> return collections
+    Left err -> error err
   where
-    decodeLine l =
-      case decodeSampleCollection l of
-        Right sc -> sc
-        Left err -> error err
+    parseCollections :: Value -> Parser [SampleCollection]
+    parseCollections =
+      withArray "SampleCollection list" $
+        traverse parseSampleCollectionValue . V.toList
+
+-- loadCollections :: FilePath -> IO [SampleCollection]
+-- loadCollections path = do
+--   content <- BL8.readFile path
+--   let ls = BL8.lines content
+--   return $ map decodeLine ls
+--   where
+--     decodeLine l =
+--       case decodeSampleCollection l of
+--         Right sc -> sc
+--         Left err -> error err
 
 getProgramNames :: [SampleCollection] -> [String]
 getProgramNames = map (\(name, _, _) -> name)

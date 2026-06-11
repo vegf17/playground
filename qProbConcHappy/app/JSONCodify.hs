@@ -7,8 +7,10 @@ module JSONCodify where
 import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.Aeson as Aeson
+import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as BS
 import Data.Complex
 import Data.Matrix (Matrix)
 import qualified Data.Matrix as M
@@ -65,23 +67,44 @@ matrixFromJSON v = do
 -- Encoder
 --------------------------------------------------------------------------------
 
-encodeSampleCollection :: SampleCollection -> BL.ByteString
-encodeSampleCollection (programName, l, samples) =
-  Aeson.encode $
-    object
-      [ "1-programName" .= programName,
-        "2-linkingFunction" .= l,
-        "3-samples" .= map encodeSample samples
-      ]
+sampleCollectionToJSON :: SampleCollection -> Value
+sampleCollectionToJSON (programName, l, samples) =
+  object
+    [ "1-programName" .= programName
+    , "2-linkingFunction" .= l
+    , "3-samples" .= map encodeSample samples
+    ]
   where
     encodeSample :: (Int, Bool, (StC, StQ)) -> Value
     encodeSample (n, b, (stc, stq)) =
       object
-        [ "sampleId" .= n,
-          "bool" .= b,
-          "stc" .= stc,
-          "stq" .= matrixToJSON stq
+        [ "sampleId" .= n
+        , "bool" .= b
+        , "stc" .= stc
+        , "stq" .= matrixToJSON stq
         ]
+
+encodeSampleCollection :: SampleCollection -> BL.ByteString
+encodeSampleCollection =
+  encodePretty . sampleCollectionToJSON
+
+-- encodeSampleCollection :: SampleCollection -> BL.ByteString
+-- encodeSampleCollection (programName, l, samples) =
+--   Aeson.encode $
+--     object
+--       [ "1-programName" .= programName,
+--         "2-linkingFunction" .= l,
+--         "3-samples" .= map encodeSample samples
+--       ]
+--   where
+--     encodeSample :: (Int, Bool, (StC, StQ)) -> Value
+--     encodeSample (n, b, (stc, stq)) =
+--       object
+--         [ "sampleId" .= n,
+--           "bool" .= b,
+--           "stc" .= stc,
+--           "stq" .= matrixToJSON stq
+--         ]
 
 --------------------------------------------------------------------------------
 -- Decoder
@@ -135,11 +158,29 @@ prepareJsonFile inputPath = do
 
   return $ jsonFile
 
+
 resetJsonFile :: FilePath -> IO ()
 resetJsonFile path =
-  writeFile path ""   -- clears file
+  BL.writeFile path (encodePretty ([] :: [Value]))
 
 appendJson :: FilePath -> SampleCollection -> IO ()
-appendJson path value = withFile path AppendMode $ \h -> do
-  BL.hPutStr h (encodeSampleCollection value)
-  hPutStr h "\n"  
+appendJson path value = do
+  content <- BS.readFile path
+
+  let oldValues =
+        case Aeson.eitherDecodeStrict' content :: Either String [Value] of
+          Right xs -> xs
+          Left _   -> []
+
+      newValues = oldValues ++ [sampleCollectionToJSON value]
+
+  BL.writeFile path (encodePretty newValues)
+
+-- resetJsonFile :: FilePath -> IO ()
+-- resetJsonFile path =
+--   writeFile path ""   -- clears file
+
+-- appendJson :: FilePath -> SampleCollection -> IO ()
+-- appendJson path value = withFile path AppendMode $ \h -> do
+--   BL.hPutStr h (encodeSampleCollection value)
+--   hPutStr h "\n"  
