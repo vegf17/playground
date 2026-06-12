@@ -1,6 +1,11 @@
-
 # Haskell build artifacts
 dist-newstyle/
 
-# Large debug JSON files
-qProbConcHappy/examples/json/*_debug.json
+# JSON files
+*.json
+
+# org files
+*.org
+
+# Emacs/Vim backup files
+*~
