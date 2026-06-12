@@ -52,15 +52,34 @@ type StTQC a = StateT LMem (ExceptT LMem (DistT [])) a --small
 small :: C -> StTQC C
 small Skip = StateT $ \s -> throwE s
 small (Asg var e) = StateT $ \(sc,l,sq) -> throwE $ (changeSt var (bigStepExp e sc) sc, l, sq)
-small (Reset q) = StateT $ \(sc,l,sq) -> throwE $ (sc, l, resetOpDen (qNumsAux q l) sq) 
-small (U g qvar) = StateT $ \(sc,l,sq) -> throwE $ (sc, l, appGateOpDen g (qNums qvar l) sq) 
+
+--small (Reset q) = StateT $ \(sc,l,sq) -> throwE $ (sc, l, resetOpDen (qNumsAux q l) sq)
+--need to test this reset operation
+small (Reset q) = do
+  (sc,l,sqt) <- get
+  let sq = zeroIfSmallS sqt
+      p0 = prob 0 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |0>
+      p1 = prob 1 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |1>
+      sq0 = stateMeas 0 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |0>
+      sq1 = stateMeas 1 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |1>
+      sq10 = applyGate X (qNums [q] l) sq1 --flips the state |1> to |0>
+      lmem0 = (sc,l,sq0)
+      lmem10 = (sc, l, sq10)
+  if (p0==0.0)
+    then StateT $ \_ -> ExceptT $ DistT $ [[(Left lmem10, p1)]]
+    else if (p1==0.0)
+    then StateT $ \_ -> ExceptT $ DistT $ [[(Left lmem0, p0)]]
+    else StateT $ \_ -> ExceptT $ DistT $ [[(Left lmem0, p0), (Left lmem10, p1)]]
+
+
+small (U g qvar) = StateT $ \(sc,l,sq) -> throwE $ (sc, l, applyGate g (qNums qvar l) sq) 
 small (Meas (x,q)) = do
   (sc,l,sqt) <- get
   let sq = zeroIfSmallS sqt
-      p0 = probOpDen 0 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |0>
-      p1 = probOpDen 1 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |1>
-      sq0 = stateMeasOpDen 0 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |0>
-      sq1 = stateMeasOpDen 1 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |1>
+      p0 = prob 0 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |0>
+      p1 = prob 1 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |1>
+      sq0 = stateMeas 0 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |0>
+      sq1 = stateMeas 1 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |1>
       sc0 = changeSt x 0 sc -- assigning the value 0 to the variable x
       sc1 = changeSt x 1 sc -- assigning the value 1 to the variable x
   if (p0==0.0)

@@ -48,20 +48,34 @@ complexFromJSON = withObject "Complex Double" $ \o -> do
 
 -- Matrices are encoded as a list of rows,
 -- each row being a list of complex numbers.
-matrixToJSON :: Matrix (Complex Double) -> Value
-matrixToJSON m =
+-- matrixToJSON :: Matrix (Complex Double) -> Value
+-- matrixToJSON m =
+--   toJSON
+--     [ [ complexToJSON (M.getElem i j m)
+--       | j <- [1 .. M.ncols m]
+--       ]
+--     | i <- [1 .. M.nrows m]
+--     ]
+
+-- matrixFromJSON :: Value -> Parser (Matrix (Complex Double))
+-- matrixFromJSON v = do
+--   rowsAsValues <- parseJSON v :: Parser [[Value]]
+--   rows <- traverse (traverse complexFromJSON) rowsAsValues
+--   pure (M.fromLists rows)
+
+-- Vectors are encoded as a flat list of complex numbers.
+vectorToJSON :: Matrix (Complex Double) -> Value
+vectorToJSON v =
   toJSON
-    [ [ complexToJSON (M.getElem i j m)
-      | j <- [1 .. M.ncols m]
-      ]
-    | i <- [1 .. M.nrows m]
+    [ complexToJSON x
+    | x <- M.toList v
     ]
 
-matrixFromJSON :: Value -> Parser (Matrix (Complex Double))
-matrixFromJSON v = do
-  rowsAsValues <- parseJSON v :: Parser [[Value]]
-  rows <- traverse (traverse complexFromJSON) rowsAsValues
-  pure (M.fromLists rows)
+vectorFromJSON :: Value -> Parser (Matrix (Complex Double))
+vectorFromJSON v = do
+  values <- parseJSON v :: Parser [Value]
+  elems  <- traverse complexFromJSON values
+  pure (M.fromList (length elems) 1 elems)
 
 --------------------------------------------------------------------------------
 -- Encoder
@@ -81,7 +95,7 @@ sampleCollectionToJSON (programName, l, samples) =
         [ "sampleId" .= n
         , "bool" .= b
         , "stc" .= stc
-        , "stq" .= matrixToJSON stq
+        , "stq" .= vectorToJSON stq
         ]
 
 encodeSampleCollection :: SampleCollection -> BL.ByteString
@@ -130,7 +144,7 @@ parseSampleCollectionValue =
         b <- o .: "bool"
         stc <- o .: "stc"
         stqVal <- o .: "stq"
-        stq <- matrixFromJSON stqVal
+        stq <- vectorFromJSON stqVal
         pure (n, b, (stc, stq))
 
 

@@ -30,7 +30,8 @@ import SemAEBE
 import SmallStep
 import Examples
 import DistTMonad
-import Beautify
+--import Beautify -- for density operators
+import Beautify_Vec
 import KStep
 import Gates
 import User_Gates
@@ -60,25 +61,44 @@ debugSmall (Asg var e) = do
       lmem = (sc',l,sq)
       strC = comToStr (Asg var e)
   StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem, [(strC, lmem)]), 1)]]
+-- debugSmall (Reset q) = do
+--   (sc,l,sq) <- get
+--   let sq' = resetOpDen (qNumsAux q l) sq
+--       lmem = (sc,l,sq')
+--       strC = comToStr (Reset q)
+--   StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem, [(strC, lmem)]), 1)]]
+
+--need to test this reset operation
 debugSmall (Reset q) = do
-  (sc,l,sq) <- get
-  let sq' = resetOpDen (qNumsAux q l) sq
-      lmem = (sc,l,sq')
+  (sc,l,sqt) <- get
+  let sq = zeroIfSmallS sqt
+      p0 = prob 0 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |0>
+      p1 = prob 1 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |1>
+      sq0 = stateMeas 0 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |0>
+      sq1 = stateMeas 1 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |1>
+      sq10 = applyGate X (qNums [q] l) sq1 --flips the state |1> to |0>
+      lmem0 = (sc,l,sq0)
+      lmem10 = (sc, l, sq10)
       strC = comToStr (Reset q)
-  StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem, [(strC, lmem)]), 1)]]      
+  if (p0==0.0)
+    then StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem10, [(strC, lmem10)]), p1)]]
+    else if (p1==0.0)
+    then StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem0, [(strC, lmem0)]), p0)]]
+    else StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem0, [(strC, lmem0)]),p0), ((Left lmem10, [(strC, lmem10)]),p1)]]
+
 debugSmall (U g qvar) = do
   (sc,l,sq) <- get
-  let sq' = appGateOpDen g (qNums qvar l) sq
+  let sq' = applyGate g (qNums qvar l) sq
       lmem = (sc,l,sq')
       strC = comToStr (U g qvar)
   StateT $ \_ -> ExceptT $ WriterT $ DistT $ [[((Left lmem, [(strC, lmem)]), 1)]]      
 debugSmall (Meas (x,q)) = do
   (sc,l,sqt) <- get
   let sq = zeroIfSmallS sqt
-      p0 = probOpDen 0 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |0>
-      p1 = probOpDen 1 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |1>
-      sq0 = stateMeasOpDen 0 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |0>
-      sq1 = stateMeasOpDen 1 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |1>
+      p0 = prob 0 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |0>
+      p1 = prob 1 ((qNumsAux q l)) sq -- probability of measuring qubit q to be in state |1>
+      sq0 = stateMeas 0 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |0>
+      sq1 = stateMeas 1 ((qNumsAux q l)) sq -- state of the system of qubits after measuring qubit q in state |1>
       sc0 = changeSt x 0 sc -- assigning the value 0 to the variable x
       sc1 = changeSt x 1 sc -- assigning the value 1 to the variable x
       lmem0 = (sc0,l,sq0)
@@ -189,7 +209,7 @@ showBranch i (((stc, stq), hist), p) =
   ++ indent (showHist hist)
 
 showStQ :: StQ -> String
-showStQ sq = rmvPlus $ denOpToKetBraComplex sq
+showStQ sq = rmvPlus $ vecToKetComplex sq
 
 indent :: String -> String
 indent = unlines . map ("  " ++) . lines

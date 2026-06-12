@@ -49,6 +49,7 @@ extra-doc-files:    CHANGELOG.md
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 extra-source-files: app/Beautify.hs,
+                    app/Beautify_Vec.hs,
                     app/Com.y,
                     app/DistTMonad.hs,
                     app/Examples.hs,
@@ -81,6 +82,7 @@ executable qProbConcHappy
 
     -- Modules included in this executable, other than Main.
     other-modules: Beautify,
+                   Beautify_Vec,
                    Com,
                    DistTMonad,
                    Examples,

@@ -219,22 +219,32 @@ VarNameList : VarNameList ',' var { $3 : $1 }
 StQ :: { (L, StQ) }
 StQ : int { ([ ('q' : show(j-1), j) | j <- [1 .. $1]], toStQfromInt $1)  }
   | '[' VarNameList ']' { toStQfromVar $2 }
-  | '[' L ']' ',' Doub '(' OpDen ')' { (reverse $2, scaleMatrix ($5 :+ 0.0) $7)  }
+  --  | '[' L ']' ',' Doub '(' OpDen ')' { (reverse $2, scaleMatrix ($5 :+ 0.0) $7)  } -- density operators
+  | '[' L ']' ',' Doub '(' Vec ')' { (reverse $2, scaleMatrix ($5 :+ 0.0) $7)  } -- vector states
   | '[' L ']' ',' StQs  { (reverse $2, $5) }
   | {- empty -} {([], fromLists [[]])}
 
+-- for density operators
+-- Stqs :: { StQ }
+-- StQs : StQs '+' Doub ket bra {sumMatrices $1 (scaleMatrix ($3 :+ 0.0) (toOpDen [$4] [$5]))}
+--   | Doub ket bra {scaleMatrix ($1 :+ 0.0) (toOpDen [$2] [$3])}
+
 StQs :: { StQ }
-StQs : StQs '+' Doub ket bra {sumMatrices $1 (scaleMatrix ($3 :+ 0.0) (toOpDen [$4] [$5]))}
-  | Doub ket bra {scaleMatrix ($1 :+ 0.0) (toOpDen [$2] [$3])}
+StQs : StQs '+' Doub ket {sumMatrices $1 (scaleMatrix ($3 :+ 0.0) (toVec $4))}
+     | Doub ket {scaleMatrix ($1 :+ 0.0) (toVec $2)}
 
 L :: { L }
 L : L ',' '(' var ',' int ')' { ($4, $6) : $1 }
   | '(' var ',' int ')' { [($2, $4)] }
   | {- empty -} { [] }
 
-OpDen :: { StQ }
-OpDen : OpDen '+' ket bra {sumMatrices $1 (toOpDen [$3] [$4])}
-  | ket bra {toOpDen [$1] [$2]}
+-- OpDen :: { StQ }
+-- OpDen : OpDen '+' ket bra {sumMatrices $1 (toOpDen [$3] [$4])}
+--   | ket bra {toOpDen [$1] [$2]}
+
+Vec :: { StQ }
+Vec : Vec '+' ket {sumMatrices $1 (toVec $3)}
+    | ket {toVec $1} 
 
 --Production rules for quantum gates
 Gates :: { G }
@@ -454,9 +464,14 @@ lexVar cs =
       
 --function that creates a n-qubit quantum state initialised at zero from an int
 toStQfromInt :: Int -> StQ
-toStQfromInt n = let ket = stringToStQ ['0' | _ <- [1..n]]
-                     bra = dagger ket
-                 in tensorProduct [ket,bra]
+toStQfromInt n = stringToStQ ['0' | _ <- [1..n]]
+
+--for density operators
+-- toStQfromInt :: Int -> StQ
+-- toStQfromInt n = let ket = stringToStQ ['0' | _ <- [1..n]]
+--                      bra = dagger ket
+--                  in tensorProduct [ket,bra]
+
 
 --function that creates a n-qubit quantum state initialised at zero from a list of variables
 toStQfromVar :: QVarList -> (L, StQ)
@@ -466,13 +481,22 @@ toStQfromVar qvarlist = let n = length qvarlist
                             qst = toStQfromInt n
                         in (l, qst)
 
+--for density operators
+-- toStQfromVar :: QVarList -> (L, StQ)
+-- toStQfromVar qvarlist = let n = length qvarlist
+--                             qvar = reverse qvarlist
+--                             l = zip qvar [i | i <- [1 .. n]]
+--                             qst = toStQfromInt n
+--                         in (l, qst)
+
+
 -- given a binary string, returns its associated density operator
 -- example: stringToSQ "01" returns a column vector corresponding to [0,1,0,0]
 stringToStQ :: String -> StQ
 stringToStQ s
   | (length s == 1) = char01ToStQ $ head s
   | (length s > 1) = tensorProduct $ map (\e -> char01ToStQ e) s
-  | otherwise = fromLists [[]]
+  | otherwise = fromLists [[]] 
 
 -- returns the vector |0> or |1> if the char is '0' or '1', respectively
 char01ToStQ :: Char -> StQ
@@ -494,6 +518,9 @@ toOpDen ket bra = let ketSt = map stringToStQ ket
                       ketBra = [tensorProduct [k,b] | (k, b) <- ketBraList]
                       (h,t) = (head ketBra, tail ketBra)
                   in foldr sumMatrices h t
+
+toVec :: String -> StQ
+toVec = stringToStQ
 
 -- function that takes some input, parses it and prints out the result
 testFile :: String -> [((String,Int,Int),(C,StC,L,StQ))]

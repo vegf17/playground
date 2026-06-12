@@ -178,6 +178,7 @@ stateMeas i n s
               p = prob i n s
               finalState = map ( map ( divideBy (realToComp (sqrt p)) ) ) mToStateL
 
+
 -- mult a b = a * b
 mult :: Matrix (Complex Double) -> Matrix (Complex Double) -> Matrix (Complex Double)  
 mult a b = multStd2 a b

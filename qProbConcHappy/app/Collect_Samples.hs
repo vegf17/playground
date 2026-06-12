@@ -21,7 +21,8 @@ import System.Random.MWC.Probability -- module to help sampling from a discrete 
 
 import Syntax
 import SmallStep
-import Beautify
+--import Beautify
+import Beautify_Vec
 import DistTMonad
 import KStep
 import Examples

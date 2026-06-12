@@ -104,7 +104,7 @@ runHistAux (h:t) sch json_file = do
 --   program -> outcome -> step
 runDebug :: String -> SchDebug -> IO ()
 runDebug path sch_d = do
-  --t0 <- getCurrentTime
+  t0 <- getCurrentTime
   json_file <- prepareDebugJsonFile path
   resetDebugJsonFile json_file
 
@@ -116,8 +116,8 @@ runDebug path sch_d = do
         }
 
   runDebugAux configs sch_d json_file
-  --t1 <- getCurrentTime
-  --putStrLn $ "time: " ++ show(diffUTCTime t1 t0)
+  t1 <- getCurrentTime
+  putStrLn $ "time: " ++ show(diffUTCTime t1 t0)
   startGUI config_GUI (setupDebug json_file)
 
 
