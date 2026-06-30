@@ -41,14 +41,13 @@ import QuantumCalc
 type NodeId = Int
 type Lvl = Int
 
-data Node = Block NodeId Lvl String
-          | Init Lvl String
+data Node = Block NodeId String
 
 type Graph = [Node]
 type Edges = [(NodeId, NodeId)]
+type GraphInfo = [(Graph, Edges, [NodeId], [NodeId], NodeId)] -- singleton
 
-
-
+-- Hist :: [(Action, LMem)]
 type Hist = [(String, LMem)]
 type Debug a = StateT LMem (ExceptT LMem (WriterT Hist (DistT []))) a --small for debug
 type SchDebug = ProbPath -> Maybe [([((Either LMem (C, LMem), Hist), Double)], Double)]

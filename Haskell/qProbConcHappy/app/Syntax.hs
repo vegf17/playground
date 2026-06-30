@@ -25,6 +25,9 @@ type L = [(QVar, Loc)] -- linking function
 type Mem = (StC, StQ)
 type LMem = (StC, L, StQ) -- has the linking function, useful for SQ
 
+--state for debug
+type LMemDebug = (LMem, Int)
+
 --quantum operations
 type Op = Matrix (Complex Double)-- operators are represented by matrices of complex numbers
 

@@ -32,17 +32,6 @@ class Family:
         self.relations = relations if relations is not None else {}
 
 
-class Disease:
-    def __init__(self,
-                 name, #String
-                 identifier=None, #String: d ++ number
-                 aliases=None #list of alternative disease names
-                 ):
-        self.name = name
-        self.identifier = identifier if identifier is not None else ""
-        self.aliases = aliases if aliases is not None else []
-
-
 def person_to_json(p):
     return{
         str(p.identifier): {
@@ -61,14 +50,5 @@ def family_to_json(fam):
             "name": fam.name,
             "members": [p for p in fam.members],
             "relations": fam.relations
-        }
-    }
-
-
-def disease_to_json(dis):
-    return {
-        str(dis.identifier): {
-            "name": dis.name,
-            "aliases": dis.aliases
         }
     }

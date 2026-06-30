@@ -9,29 +9,23 @@ FAM_DIR = "fam/"
 PPL_DIR = "ppl/"
 PPL_FILE = "ppl.json"
 COUNT_FILE = "count.json"
-DISEASES_FILE = "diseases.json"
+DIS_FILE = "dis.json"
 COUNT_PATH = Path(DATA_SOURCE + COUNT_FILE)
-DISEASES_PATH = Path(DATA_SOURCE + DISEASES_FILE)
 
 RELATIONS=["father", "mother", "siblings", "partners", "kids"]
 
 def start():
-    """Create the storage folders and base JSON files used by the app."""
     data_path = Path(DATA_SOURCE)
     fam_path = Path(DATA_SOURCE + FAM_DIR)
     ppl_path = Path(DATA_SOURCE + PPL_DIR)
-
-    data_path.mkdir(parents=True, exist_ok=True)
-    fam_path.mkdir(parents=True, exist_ok=True)
-    ppl_path.mkdir(parents=True, exist_ok=True)
-
-    ppl_file_path = Path(DATA_SOURCE + PPL_DIR + PPL_FILE)
-    if not ppl_file_path.exists():
-        with open(ppl_file_path, "w", encoding="utf-8") as f:
-            json.dump({}, f, indent=4, ensure_ascii=False)
-
-    ensure_disease_catalog()
-    migrate_people_diseases_to_ids()
+    if (not data_path.exists()) or (not fam_path.exists()) or (not ppl_path.exists()):
+        data_path.mkdir(parents=True, exist_ok=True)
+        fam_path.mkdir(parents=True, exist_ok=True)
+        ppl_path.mkdir(parents=True, exist_ok=True)
+        with open(Path(DATA_SOURCE+PPL_DIR+PPL_FILE), "w", encoding="utf-8") as f:
+            json.dump({}, f, indent=4)
+    else:
+        pass        
 
 def init_count_file():
     if COUNT_PATH.exists():
@@ -51,7 +45,7 @@ def init_count_file():
 
 def get_count_file_info():
     if not COUNT_PATH.exists():
-        init_count_file()
+        count_file()
 
     with open(COUNT_PATH, "r") as f:
         data = json.load(f)
@@ -68,249 +62,6 @@ def upd_count_file(count_ppl, count_fam):
             "count_fam": count_fam
         }, f, indent=4)
         
-
-
-
-# ---------------------------------------------------------------------
-# Disease catalogue helpers
-# ---------------------------------------------------------------------
-
-
-def _clean_disease_name(name):
-    """Normalize whitespace while preserving display capitalization."""
-    return " ".join(str(name).strip().split())
-
-
-def _disease_lookup_key(name):
-    """Case-insensitive key used to avoid duplicate disease catalogue entries."""
-    return _clean_disease_name(name).casefold()
-
-
-def ensure_disease_catalog():
-    """Create data/diseases.json if it does not exist yet.
-
-    The catalogue stores only diseases. Person-to-disease links remain in
-    ppl.json as disease identifiers.
-    """
-    DISEASES_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    if not DISEASES_PATH.exists():
-        with open(DISEASES_PATH, "w", encoding="utf-8") as f:
-            json.dump({"count_dis": 0, "diseases": {}}, f, indent=4, ensure_ascii=False)
-        return
-
-    # Be permissive with older/manual formats and rewrite to the canonical shape.
-    with open(DISEASES_PATH, "r", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError:
-            data = {"count_dis": 0, "diseases": {}}
-
-    if isinstance(data, list):
-        converted = {"count_dis": 0, "diseases": {}}
-        for disease_name in data:
-            name = _clean_disease_name(disease_name)
-            if not name:
-                continue
-            disease_id = f"d{converted['count_dis']}"
-            converted["diseases"][disease_id] = {"name": name, "aliases": []}
-            converted["count_dis"] += 1
-        data = converted
-
-    if not isinstance(data, dict):
-        data = {"count_dis": 0, "diseases": {}}
-
-    data.setdefault("count_dis", 0)
-    data.setdefault("diseases", {})
-
-    changed = False
-    for disease_id, disease in list(data["diseases"].items()):
-        if not isinstance(disease, dict):
-            data["diseases"][disease_id] = {"name": _clean_disease_name(disease), "aliases": []}
-            changed = True
-            continue
-        original = dict(disease)
-        disease["name"] = _clean_disease_name(disease.get("name", ""))
-        aliases = disease.get("aliases", [])
-        disease["aliases"] = [_clean_disease_name(alias) for alias in aliases if _clean_disease_name(alias)] if isinstance(aliases, list) else []
-        if disease != original:
-            changed = True
-
-    # Keep the counter ahead of the highest numeric disease id.
-    highest_id = -1
-    for disease_id in data["diseases"]:
-        if disease_id.startswith("d") and disease_id[1:].isdigit():
-            highest_id = max(highest_id, int(disease_id[1:]))
-    wanted_count = max(int(data.get("count_dis", 0)), highest_id + 1)
-    if data.get("count_dis") != wanted_count:
-        data["count_dis"] = wanted_count
-        changed = True
-
-    if changed:
-        save_disease_catalog(data)
-
-
-def load_disease_catalog():
-    ensure_disease_catalog()
-    with open(DISEASES_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_disease_catalog(catalog):
-    DISEASES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(DISEASES_PATH, "w", encoding="utf-8") as f:
-        json.dump(catalog, f, indent=4, ensure_ascii=False)
-
-
-def list_diseases():
-    """Return [(disease_id, display_name), ...] sorted by disease name."""
-    catalog = load_disease_catalog()
-    return sorted(
-        [(disease_id, disease.get("name", disease_id)) for disease_id, disease in catalog.get("diseases", {}).items()],
-        key=lambda item: item[1].casefold()
-    )
-
-
-def find_disease_by_name(name, include_aliases=True):
-    """Return an existing disease id by name/alias, or None."""
-    lookup = _disease_lookup_key(name)
-    if not lookup:
-        return None
-
-    catalog = load_disease_catalog()
-    for disease_id, disease in catalog.get("diseases", {}).items():
-        if _disease_lookup_key(disease.get("name", "")) == lookup:
-            return disease_id
-        if include_aliases:
-            for alias in disease.get("aliases", []):
-                if _disease_lookup_key(alias) == lookup:
-                    return disease_id
-    return None
-
-
-def add_disease(name, aliases=None):
-    """Add a disease to the catalogue and return its id.
-
-    Existing diseases are reused when the name matches case-insensitively.
-    """
-    clean_name = _clean_disease_name(name)
-    if not clean_name:
-        raise ValueError("Disease name cannot be empty")
-
-    existing_id = find_disease_by_name(clean_name)
-    if existing_id is not None:
-        return existing_id
-
-    catalog = load_disease_catalog()
-    count_dis = int(catalog.get("count_dis", 0))
-    disease_id = f"d{count_dis}"
-    while disease_id in catalog.get("diseases", {}):
-        count_dis += 1
-        disease_id = f"d{count_dis}"
-
-    clean_aliases = []
-    for alias in aliases or []:
-        clean_alias = _clean_disease_name(alias)
-        if clean_alias and _disease_lookup_key(clean_alias) != _disease_lookup_key(clean_name):
-            clean_aliases.append(clean_alias)
-
-    catalog.setdefault("diseases", {})[disease_id] = {
-        "name": clean_name,
-        "aliases": clean_aliases
-    }
-    catalog["count_dis"] = count_dis + 1
-    save_disease_catalog(catalog)
-    return disease_id
-
-
-def disease_id_to_name(disease_ref):
-    """Return the display name for a disease id or legacy disease value."""
-    if isinstance(disease_ref, dict):
-        disease_ref = disease_ref.get("disease_id") or disease_ref.get("name") or disease_ref.get("disease")
-
-    if disease_ref is None:
-        return ""
-
-    disease_ref = str(disease_ref)
-    catalog = load_disease_catalog()
-    disease = catalog.get("diseases", {}).get(disease_ref)
-    if disease:
-        return disease.get("name", disease_ref)
-    return disease_ref
-
-
-def normalize_disease_refs(diseases):
-    """Convert disease names/legacy values to canonical disease ids.
-
-    This function accepts strings, dictionaries containing a disease_id, or
-    lists containing either. Duplicate entries are removed while preserving
-    order.
-    """
-    ensure_disease_catalog()
-
-    if diseases is None:
-        return []
-    if isinstance(diseases, str):
-        diseases = [diseases]
-
-    normalized = []
-    seen = set()
-    catalog = load_disease_catalog()
-
-    for disease in diseases:
-        if disease is None:
-            continue
-
-        disease_id = None
-        if isinstance(disease, dict):
-            disease_id = disease.get("disease_id")
-            disease_name = disease.get("name") or disease.get("disease")
-            if disease_id and disease_id not in catalog.get("diseases", {}) and disease_name:
-                disease_id = add_disease(disease_name)
-        else:
-            disease_text = _clean_disease_name(disease)
-            if not disease_text:
-                continue
-            if disease_text in catalog.get("diseases", {}):
-                disease_id = disease_text
-            else:
-                disease_id = find_disease_by_name(disease_text)
-                if disease_id is None:
-                    disease_id = add_disease(disease_text)
-
-        if disease_id and disease_id not in seen:
-            normalized.append(disease_id)
-            seen.add(disease_id)
-
-    return normalized
-
-
-def disease_ids_to_names(diseases):
-    return [disease_id_to_name(disease_id) for disease_id in normalize_disease_refs(diseases)]
-
-
-def migrate_people_diseases_to_ids():
-    """Migrate legacy free-text diseases in ppl.json to disease ids."""
-    ppl_path = Path(DATA_SOURCE + PPL_DIR + PPL_FILE)
-    if not ppl_path.exists():
-        return
-
-    with open(ppl_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    changed = False
-    for person_data in data.values():
-        health_info = person_data.setdefault("health_info", {})
-        old_diseases = health_info.get("diseases", [])
-        new_diseases = normalize_disease_refs(old_diseases)
-        if old_diseases != new_diseases:
-            health_info["diseases"] = new_diseases
-            changed = True
-
-    if changed:
-        with open(ppl_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-
 
 def init_family(name, **rest):
     """
@@ -362,8 +113,7 @@ def add_person(name, **rest):
     **rest: birth -> String
             death -> String
             blood_type -> String
-            diseases -> [String or disease-id]
-            health_info -> Dictionary
+            diseases -> [String]
             photo -> Path
     """
     count_ppl, count_fam = get_count_file_info()
@@ -377,20 +127,16 @@ def add_person(name, **rest):
     #unpacking **rest
     birth = rest["birth"] if "birth" in rest.keys() else None
     death = rest["death"] if "death" in rest.keys() else None
+    blood_type = rest["blood_type"] if "blood_type" in rest.keys() else None
+    diseases = rest["diseases"] if "diseases" in rest.keys() else []
     photo = rest["photo"] if "photo" in rest.keys() else None
 
-    supplied_health_info = rest.get("health_info")
-    if supplied_health_info is not None:
-        health_info = dict(supplied_health_info)
-        health_info.setdefault("blood_type", rest.get("blood_type"))
-        health_info["diseases"] = normalize_disease_refs(health_info.get("diseases", rest.get("diseases", [])))
-    else:
-        health_info = {
-            "blood_type": rest.get("blood_type"),
-            "diseases": normalize_disease_refs(rest.get("diseases", []))
-        }
-    health_info.setdefault("clinical_history", [])
-
+    #creating the health_info dictionary
+    health_info = {}
+    health_info["blood_type"] = blood_type
+    health_info["diseases"] = diseases
+    
+    
     #adds the person to the json file that contains all people
     ppl_path = Path(DATA_SOURCE+PPL_DIR+PPL_FILE)
     person = Person(name=name,
@@ -400,11 +146,11 @@ def add_person(name, **rest):
                     photo=photo,
                     identifier=identifier
                     )
-    with open(ppl_path, "r", encoding="utf-8") as f:
+    with open(ppl_path, "r") as f:
         data = json.load(f)
         data.update(person_to_json(person))
-    with open(ppl_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    with open(ppl_path, "w") as f:
+        json.dump(data, f, indent=4)
 
     #updates the count file
     upd_count_file(count_ppl+1, count_fam)
@@ -414,36 +160,20 @@ def add_person(name, **rest):
 def upd_info_person(p_id, **rest):
     """
     p_id: Person identifier
-    **rest: name, birth, death, blood_type, diseases, health_info, photo, families
+    **rest: name, birth, death, blood_type, diseases, photo, families
     """
     ppl_path=Path(DATA_SOURCE+PPL_DIR+PPL_FILE)
-    with open(ppl_path, "r", encoding="utf-8") as f:
+    with open(ppl_path, "r") as f:
         data = json.load(f)
-        if p_id not in data:
-            print(f"It does not exist the person with identifier: {p_id}")
-            return
-
-        data[p_id].setdefault("health_info", {})
-        data[p_id].setdefault("families", [])
-
         for k,v in rest.items():
-            if k=="families":
-                if v not in data[p_id][k]:
-                    data[p_id][k].append(v)
-            elif k=="health_info":
-                health_info = dict(data[p_id].get("health_info", {}))
-                health_info.update(v or {})
-                health_info["diseases"] = normalize_disease_refs(health_info.get("diseases", []))
-                health_info.setdefault("clinical_history", [])
-                data[p_id]["health_info"] = health_info
-            elif k=="blood_type":
+            if k=="families" and v not in data[p_id][k]:
+                data[p_id][k].append(v)
+            elif k=="blood_type" or k=="diseases":
                 data[p_id]["health_info"].update({k:v})
-            elif k=="diseases":
-                data[p_id]["health_info"].update({k:normalize_disease_refs(v)})
             else:
                 data[p_id][k]=v
-    with open(ppl_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    with open(ppl_path, "w") as f:
+        json.dump(data, f, indent=4)
 
 
 def rmv_person(p_id):
@@ -451,7 +181,7 @@ def rmv_person(p_id):
     with open(ppl_path, "r") as f:
         data = json.load(f)
         for fam_id in data[p_id]["families"]:
-            rmv_person_family(fam_id, p_id) #to define
+            rmv_person_family(fam_id, p_id) 
         data.pop(p_id)
     with open(ppl_path, "w") as f:
         json.dump(data, f, indent=4)
@@ -486,9 +216,7 @@ def add_person_to_family(fam_id, p, **relations):
         members=data[fam_id]["members"]
         members.append(p.identifier)
         data[fam_id]["relations"][p.identifier] = fill_relations_member(relations)
-        #print(f"before update\n\tp: {p.identifier}\n\t {data[fam_id]["relations"]}")
         upd_relations = upd_family_relations(members, data[fam_id]["relations"])
-        #print(f"after update\n\tp: {p.identifier}\n\t {data[fam_id]["relations"]}")
         data[fam_id]["relations"] = upd_relations
     with open(file_path, "w") as f:
         json.dump(data, f, indent=4)
@@ -501,9 +229,6 @@ def upd_family_relations(members, relations):
     """
     keys = relations.keys()
     for p in keys:
-        # print(f"p: {p}")
-        # print(f"init (father,mother) {relations[p]["father"], relations[p]["mother"]}")
-
         #if father exists and it is a member of the family
         if relations[p]["father"] and relations[p]["father"] in members:
             father=relations[p]["father"]
@@ -694,7 +419,7 @@ def track_person_diseases(p_id):
         if relative is None:
             return
 
-        diseases = disease_ids_to_names(relative.get("health_info", {}).get("diseases", []))
+        diseases = relative.get("health_info", {}).get("diseases", [])
 
         track_diseases[relative_id] = {
             "fam": fam_name,
@@ -916,11 +641,10 @@ def fam_diseases(fam_id):
         for p_id in data[fam_id]["members"]:
             p = get_person_by_id(p_id)
             p_name = p["name"]
-            p_diseases = normalize_disease_refs(p["health_info"].get("diseases", []))
-            for disease_id in p_diseases:
-                disease_name = disease_id_to_name(disease_id)
-                if disease_name not in diseases_fam.keys():
-                    diseases_fam[disease_name] = [(p_name, p_id)]
+            p_diseases = p["health_info"]["diseases"]
+            for dis in p_diseases:
+                if dis not in diseases_fam.keys():
+                    diseases_fam[dis] = [(p_name, p_id)]
                 else:
-                    diseases_fam[disease_name].append((p_name, p_id))
+                    diseases_fam[dis].append((p_name, p_id))
     return diseases_fam
